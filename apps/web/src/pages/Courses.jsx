@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Search, Filter, Star, Clock, Users, ChevronDown, ShoppingCart, Heart } from 'lucide-react'
 import { gsap } from 'gsap'
+import { apiFetch } from '../lib/apiClient'
 
 const Courses = () => {
   const [searchParams] = useSearchParams()
@@ -10,6 +11,7 @@ const Courses = () => {
   const [selectedLevel, setSelectedLevel] = useState('all')
   const [sortBy, setSortBy] = useState('popular')
   const [showFilters, setShowFilters] = useState(false)
+  const [courses, setCourses] = useState([])
 
   useEffect(() => {
     const urlSearchTerm = searchParams.get('search') || ''
@@ -22,6 +24,32 @@ const Courses = () => {
       { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: 'power2.out' }
     )
   }, [selectedCategory, selectedLevel, sortBy, searchTerm])
+
+  useEffect(() => {
+    apiFetch('/api/courses')
+      .then((r) => {
+        const mapped = (r.items || []).map((c) => ({
+          id: c._id,
+          title: c.title,
+          instructor: 'LearnHub',
+          category: c.category,
+          level: c.level,
+          rating: 4.8,
+          students: '0',
+          duration: 'Self-paced',
+          image: c.imageUrl,
+          price: Math.round((c.priceCents || 0) / 100),
+          originalPrice: null,
+          description: c.description,
+          features: ['Certificate of completion', 'Lifetime access'],
+          createdAt: c.createdAt,
+        }))
+        setCourses(mapped)
+      })
+      .catch(() => {
+        setCourses([])
+      })
+  }, [])
 
   const addToCart = (course) => {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]')
@@ -53,99 +81,6 @@ const Courses = () => {
     { id: 'advanced', name: 'Advanced' }
   ]
 
-  const courses = [
-    {
-      id: 1,
-      title: 'Complete React Development Course',
-      instructor: 'John Smith',
-      category: 'technology',
-      level: 'intermediate',
-      rating: 4.8,
-      students: '12,543',
-      duration: '40 hours',
-      image: 'https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=400',
-      price: 89,
-      originalPrice: 149,
-      description: 'Master React from basics to advanced concepts with hands-on projects.',
-      features: ['40+ hours of content', 'Certificate of completion', 'Lifetime access', '24/7 support']
-    },
-    {
-      id: 2,
-      title: 'Data Science with Python',
-      instructor: 'Dr. Sarah Johnson',
-      category: 'data-science',
-      level: 'beginner',
-      rating: 4.9,
-      students: '8,234',
-      duration: '35 hours',
-      image: 'https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=400',
-      price: 79,
-      originalPrice: 129,
-      description: 'Learn data analysis, visualization, and machine learning with Python.',
-      features: ['35+ hours of content', 'Real-world projects', 'Certificate included', 'Job assistance']
-    },
-    {
-      id: 3,
-      title: 'Digital Marketing Mastery',
-      instructor: 'Mike Wilson',
-      category: 'marketing',
-      level: 'beginner',
-      rating: 4.7,
-      students: '15,678',
-      duration: '25 hours',
-      image: 'https://images.pexels.com/photos/265087/pexels-photo-265087.jpeg?auto=compress&cs=tinysrgb&w=400',
-      price: 69,
-      originalPrice: 99,
-      description: 'Complete guide to digital marketing strategies and tools.',
-      features: ['25+ hours of content', 'Marketing templates', 'Case studies', 'Expert support']
-    },
-    {
-      id: 4,
-      title: 'UX/UI Design Fundamentals',
-      instructor: 'Emily Chen',
-      category: 'design',
-      level: 'beginner',
-      rating: 4.8,
-      students: '9,876',
-      duration: '30 hours',
-      image: 'https://images.pexels.com/photos/196644/pexels-photo-196644.jpeg?auto=compress&cs=tinysrgb&w=400',
-      price: 85,
-      originalPrice: 135,
-      description: 'Design beautiful and user-friendly interfaces.',
-      features: ['30+ hours of content', 'Design tools included', 'Portfolio projects', 'Mentorship']
-    },
-    {
-      id: 5,
-      title: 'Business Strategy & Analytics',
-      instructor: 'Robert Davis',
-      category: 'business',
-      level: 'advanced',
-      rating: 4.6,
-      students: '5,432',
-      duration: '45 hours',
-      image: 'https://images.pexels.com/photos/159888/pexels-photo-159888.jpeg?auto=compress&cs=tinysrgb&w=400',
-      price: 99,
-      originalPrice: 179,
-      description: 'Advanced business strategy and data-driven decision making.',
-      features: ['45+ hours of content', 'Business templates', 'Case studies', 'Expert feedback']
-    },
-    {
-      id: 6,
-      title: 'Machine Learning Fundamentals',
-      instructor: 'Dr. Alex Kumar',
-      category: 'technology',
-      level: 'intermediate',
-      rating: 4.9,
-      students: '7,890',
-      duration: '50 hours',
-      image: 'https://images.pexels.com/photos/8386440/pexels-photo-8386440.jpeg?auto=compress&cs=tinysrgb&w=400',
-      price: 119,
-      originalPrice: 199,
-      description: 'Comprehensive introduction to machine learning algorithms.',
-      features: ['50+ hours of content', 'Python & R included', 'Real datasets', 'Career guidance']
-    }
-  ]
-
   const filteredCourses = courses.filter(course => {
     const matchesSearch = searchTerm === '' || 
                          course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -166,7 +101,7 @@ const Courses = () => {
       case 'price-high':
         return b.price - a.price
       case 'newest':
-        return b.id - a.id
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
       default: // popular
         return parseInt(b.students.replace(/[^\d]/g, '')) - parseInt(a.students.replace(/[^\d]/g, ''))
     }

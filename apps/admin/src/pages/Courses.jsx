@@ -1,56 +1,98 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Plus, Search, Filter, Eye, Edit, Trash2, MoreVertical } from 'lucide-react'
+import { apiFetch } from '../lib/apiClient'
 
 const Courses = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [courses, setCourses] = useState([])
+  const [isCreating, setIsCreating] = useState(false)
+  const [createForm, setCreateForm] = useState({
+    title: '',
+    description: '',
+    category: '',
+    level: '',
+    price: '',
+    imageUrl: '',
+    published: true,
+  })
+  const [createError, setCreateError] = useState('')
 
-  const courses = [
-    {
-      id: 1,
-      title: 'Complete React Development Course',
-      instructor: 'John Smith',
-      category: 'Technology',
-      price: 89,
-      students: 1250,
-      status: 'published',
-      createdAt: '2024-01-15',
-      revenue: 111250
-    },
-    {
-      id: 2,
-      title: 'Data Science with Python',
-      instructor: 'Dr. Sarah Johnson',
-      category: 'Data Science',
-      price: 79,
-      students: 890,
-      status: 'published',
-      createdAt: '2024-01-10',
-      revenue: 70310
-    },
-    {
-      id: 3,
-      title: 'Digital Marketing Mastery',
-      instructor: 'Mike Wilson',
-      category: 'Marketing',
-      price: 69,
-      students: 567,
-      status: 'draft',
-      createdAt: '2024-01-12',
-      revenue: 39123
-    },
-    {
-      id: 4,
-      title: 'UX/UI Design Fundamentals',
-      instructor: 'Emily Chen',
-      category: 'Design',
-      price: 85,
-      students: 432,
-      status: 'published',
-      createdAt: '2024-01-08',
-      revenue: 36720
+  useEffect(() => {
+    apiFetch('/api/admin/courses')
+      .then((r) => {
+        const mapped = (r.items || []).map((c) => ({
+          id: c._id,
+          title: c.title,
+          instructor: 'Admin',
+          category: c.category,
+          price: Math.round((c.priceCents || 0) / 100),
+          students: 0,
+          status: c.published ? 'published' : 'draft',
+          createdAt: c.createdAt ? String(c.createdAt).slice(0, 10) : '',
+          revenue: 0,
+        }))
+        setCourses(mapped)
+      })
+      .catch(() => {
+        setCourses([])
+      })
+  }, [])
+
+  const handleCreateChange = (e) => {
+    const { name, value, type, checked } = e.target
+    setCreateForm((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }))
+  }
+
+  const submitCreate = async () => {
+    setCreateError('')
+    try {
+      const priceCents = Math.round(parseFloat(createForm.price || '0') * 100)
+      const res = await apiFetch('/api/admin/courses', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: createForm.title,
+          description: createForm.description,
+          category: createForm.category,
+          level: createForm.level,
+          priceCents,
+          currency: 'usd',
+          imageUrl: createForm.imageUrl,
+          published: createForm.published,
+        }),
+      })
+
+      setCourses((prev) => [
+        {
+          id: res.course._id,
+          title: res.course.title,
+          instructor: 'Admin',
+          category: res.course.category,
+          price: Math.round((res.course.priceCents || 0) / 100),
+          students: 0,
+          status: res.course.published ? 'published' : 'draft',
+          createdAt: res.course.createdAt ? String(res.course.createdAt).slice(0, 10) : '',
+          revenue: 0,
+        },
+        ...prev,
+      ])
+      setIsCreating(false)
+      setCreateForm({
+        title: '',
+        description: '',
+        category: '',
+        level: '',
+        price: '',
+        imageUrl: '',
+        published: true,
+      })
+    } catch (e) {
+      setCreateError(e?.message || 'Failed to create course')
     }
-  ]
+  }
 
   const filteredCourses = courses.filter(course => {
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -80,11 +122,54 @@ const Courses = () => {
           <h1 className="text-2xl font-bold text-gray-900">Courses</h1>
           <p className="text-gray-600 text-sm">Manage all courses on your platform</p>
         </div>
-        <button className="btn-primary flex items-center space-x-2">
+        <button onClick={() => setIsCreating(true)} className="btn-primary flex items-center space-x-2">
           <Plus className="w-4 h-4" />
           <span>Add Course</span>
         </button>
       </div>
+
+      {isCreating && (
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Create Course</h2>
+            <button onClick={() => setIsCreating(false)} className="text-sm text-gray-600 hover:text-gray-900">Close</button>
+          </div>
+          {createError && <div className="text-sm text-red-600 mb-3">{createError}</div>}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+              <input name="title" value={createForm.title} onChange={handleCreateChange} className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Level</label>
+              <input name="level" value={createForm.level} onChange={handleCreateChange} className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <input name="category" value={createForm.category} onChange={handleCreateChange} className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Price (USD)</label>
+              <input name="price" value={createForm.price} onChange={handleCreateChange} className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
+              <input name="imageUrl" value={createForm.imageUrl} onChange={handleCreateChange} className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea name="description" value={createForm.description} onChange={handleCreateChange} className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm" rows={3} />
+            </div>
+            <div className="md:col-span-2 flex items-center justify-between">
+              <label className="flex items-center space-x-2 text-sm text-gray-700">
+                <input type="checkbox" name="published" checked={createForm.published} onChange={handleCreateChange} />
+                <span>Published</span>
+              </label>
+              <button onClick={submitCreate} className="btn-primary">Create</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="card">

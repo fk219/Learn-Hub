@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { gsap } from 'gsap'
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from 'lucide-react'
-import { GoogleLogin } from '@react-oauth/google'
+import { apiFetch, setAccessToken } from '../lib/apiClient'
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
@@ -85,63 +85,22 @@ const SignUp = () => {
     setIsLoading(true)
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      const userData = {
-        email: formData.email,
-        name: `${formData.firstName} ${formData.lastName}`,
-        loginMethod: 'email'
-      }
-      
-      localStorage.setItem('user', JSON.stringify(userData))
+      const data = await apiFetch('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: `${formData.firstName} ${formData.lastName}`.trim(),
+          email: formData.email,
+          password: formData.password,
+        }),
+      })
+
+      setAccessToken(data.accessToken)
+      localStorage.setItem('user', JSON.stringify(data.user))
       navigate('/')
-      alert('Account created successfully! Welcome to LearnHub!')
     } catch (error) {
-      setErrors({ general: 'An error occurred. Please try again.' })
+      setErrors({ general: error?.message || 'An error occurred. Please try again.' })
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const handleGoogleSuccess = (credentialResponse) => {
-    try {
-      // Decode the JWT token to get user info
-      const payload = JSON.parse(atob(credentialResponse.credential.split('.')[1]))
-      
-      const userData = {
-        email: payload.email,
-        name: payload.name,
-        picture: payload.picture,
-        loginMethod: 'google'
-      }
-      
-      localStorage.setItem('user', JSON.stringify(userData))
-      navigate('/')
-      alert('Account created successfully with Google!')
-    } catch (error) {
-      console.error('Google signup failed:', error)
-      setErrors({ general: 'Google signup failed. Please try again.' })
-    }
-  }
-
-  const handleGoogleError = () => {
-    setErrors({ general: 'Google signup failed. Please try again.' })
-  }
-
-  const handleFacebookResponse = (response) => {
-    if (response && response.email) {
-      const userData = {
-        email: response.email,
-        name: response.name,
-        picture: response.picture?.data?.url,
-        loginMethod: 'facebook'
-      }
-      
-      localStorage.setItem('user', JSON.stringify(userData))
-      navigate('/')
-      alert('Account created successfully with Facebook!')
-    } else {
-      setErrors({ general: 'Facebook signup failed. Please try again.' })
     }
   }
 
@@ -337,38 +296,6 @@ const SignUp = () => {
               )}
             </button>
           </form>
-
-          <div className="mt-4">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center text-xs">
-                <span className="px-2 bg-white text-gray-500">Or sign up with</span>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={handleGoogleError}
-                theme="outline"
-                size="medium"
-                text="signup_with"
-                shape="rectangular"
-                logo_alignment="left"
-              />
-
-              <FacebookLogin
-                appId="your-facebook-app-id" // Replace with your Facebook App ID
-                autoLoad={false}
-                fields="name,email,picture"
-                callback={handleFacebookResponse}
-                cssClass="w-full inline-flex justify-center py-2 px-3 border border-gray-200 rounded-lg shadow-sm bg-white text-xs font-medium text-gray-500 hover:bg-gray-50"
-                textButton="Facebook"
-              />
-            </div>
-          </div>
 
           <div className="mt-4 text-center">
             <p className="text-xs text-gray-600">

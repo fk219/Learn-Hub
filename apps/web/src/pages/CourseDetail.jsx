@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { gsap } from 'gsap'
 import { Play, Star, Clock, Users, Globe, Award, BookOpen, CheckCircle, Download, Share2, Heart, ChevronRight, Calendar, Video, FileText, Pizza as Quiz } from 'lucide-react'
+import { apiFetch } from '../lib/apiClient'
 
 const CourseDetail = () => {
   const { id } = useParams()
   const [activeTab, setActiveTab] = useState('overview')
   const [isEnrolled, setIsEnrolled] = useState(false)
+  const [course, setCourse] = useState(null)
 
   useEffect(() => {
     gsap.fromTo('.course-hero',
@@ -20,9 +22,8 @@ const CourseDetail = () => {
     )
   }, [])
 
-  // Mock course data - in real app, fetch based on id
-  const course = {
-    id: parseInt(id),
+  const fallbackCourse = {
+    id,
     title: 'Machine Learning Specialization',
     instructor: 'Andrew Ng',
     instructorTitle: 'Co-founder of Coursera, Adjunct Professor at Stanford',
@@ -105,6 +106,30 @@ By the end of this specialization, you will have mastered key concepts and gaine
     }
   }
 
+  useEffect(() => {
+    apiFetch(`/api/courses/${id}`)
+      .then((r) => {
+        const c = r.course
+        setCourse((prev) => ({
+          ...(prev || fallbackCourse),
+          id: c._id,
+          title: c.title,
+          description: c.description,
+          image: c.imageUrl,
+          category: c.category,
+          level: c.level,
+          price: `$${Math.round((c.priceCents || 0) / 100)}`,
+          originalPrice: null,
+          createdAt: c.createdAt,
+        }))
+      })
+      .catch(() => {
+        setCourse(fallbackCourse)
+      })
+  }, [id])
+
+  const displayCourse = course || fallbackCourse
+
   const tabs = [
     { id: 'overview', name: 'Overview' },
     { id: 'syllabus', name: 'Syllabus' },
@@ -130,39 +155,39 @@ By the end of this specialization, you will have mastered key concepts and gaine
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
               <div className="mb-4">
-                <span className="text-coursera-lightblue text-sm font-medium">{course.university}</span>
+                <span className="text-coursera-lightblue text-sm font-medium">{displayCourse.university}</span>
               </div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-4">{course.title}</h1>
-              <p className="text-xl text-gray-300 mb-6">{course.description}</p>
+              <h1 className="text-3xl md:text-4xl font-bold mb-4">{displayCourse.title}</h1>
+              <p className="text-xl text-gray-300 mb-6">{displayCourse.description}</p>
               
               <div className="flex flex-wrap items-center gap-6 mb-6">
                 <div className="flex items-center space-x-1">
                   <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                  <span className="font-semibold">{course.rating}</span>
-                  <span className="text-gray-300">({course.reviewCount} reviews)</span>
+                  <span className="font-semibold">{displayCourse.rating}</span>
+                  <span className="text-gray-300">({displayCourse.reviewCount} reviews)</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Users className="w-5 h-5 text-gray-400" />
-                  <span>{course.students} students</span>
+                  <span>{displayCourse.students} students</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Clock className="w-5 h-5 text-gray-400" />
-                  <span>{course.duration}</span>
+                  <span>{displayCourse.duration}</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Globe className="w-5 h-5 text-gray-400" />
-                  <span>{course.language}</span>
+                  <span>{displayCourse.language}</span>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2 mb-6">
-                {course.skills.slice(0, 4).map((skill, index) => (
+                {displayCourse.skills.slice(0, 4).map((skill, index) => (
                   <span key={index} className="bg-white/10 text-white px-3 py-1 rounded-full text-sm">
                     {skill}
                   </span>
                 ))}
-                {course.skills.length > 4 && (
-                  <span className="text-gray-300 text-sm">+{course.skills.length - 4} more</span>
+                {displayCourse.skills.length > 4 && (
+                  <span className="text-gray-300 text-sm">+{displayCourse.skills.length - 4} more</span>
                 )}
               </div>
 
@@ -187,8 +212,8 @@ By the end of this specialization, you will have mastered key concepts and gaine
               <div className="bg-white rounded-xl p-6 shadow-lg">
                 <div className="relative mb-4">
                   <img
-                    src={course.image}
-                    alt={course.title}
+                    src={displayCourse.image}
+                    alt={displayCourse.title}
                     className="w-full h-48 object-cover rounded-lg"
                   />
                   <button className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg hover:bg-black/40 transition-colors duration-200">
@@ -200,28 +225,30 @@ By the end of this specialization, you will have mastered key concepts and gaine
                 
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-2">
-                    <span className="text-3xl font-bold text-coursera-blue">{course.price}</span>
-                    {course.originalPrice && (
-                      <span className="text-lg text-gray-400 line-through">{course.originalPrice}</span>
+                    <span className="text-3xl font-bold text-coursera-blue">{displayCourse.price}</span>
+                    {displayCourse.originalPrice && (
+                      <span className="text-lg text-gray-400 line-through">{displayCourse.originalPrice}</span>
                     )}
                   </div>
-                  <span className="bg-red-100 text-red-600 text-sm font-semibold px-2 py-1 rounded">
-                    38% off
-                  </span>
+                  {displayCourse.originalPrice && (
+                    <span className="bg-red-100 text-red-600 text-sm font-semibold px-2 py-1 rounded">
+                      Sale
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-3 text-sm text-gray-600 mb-6">
                   <div className="flex items-center justify-between">
                     <span>Level:</span>
-                    <span className="font-medium text-gray-900">{course.level}</span>
+                    <span className="font-medium text-gray-900">{displayCourse.level}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Duration:</span>
-                    <span className="font-medium text-gray-900">{course.duration}</span>
+                    <span className="font-medium text-gray-900">{displayCourse.duration}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Language:</span>
-                    <span className="font-medium text-gray-900">{course.language}</span>
+                    <span className="font-medium text-gray-900">{displayCourse.language}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Certificate:</span>
@@ -273,13 +300,13 @@ By the end of this specialization, you will have mastered key concepts and gaine
               <div className="space-y-8">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">About this Course</h2>
-                  <p className="text-gray-700 leading-relaxed mb-6">{course.longDescription}</p>
+                  <p className="text-gray-700 leading-relaxed mb-6">{displayCourse.longDescription}</p>
                 </div>
 
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-4">What you'll learn</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {course.whatYouLearn.map((item, index) => (
+                    {displayCourse.whatYouLearn.map((item, index) => (
                       <div key={index} className="flex items-start space-x-3">
                         <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
                         <span className="text-gray-700">{item}</span>
@@ -291,7 +318,7 @@ By the end of this specialization, you will have mastered key concepts and gaine
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-4">Skills you'll gain</h3>
                   <div className="flex flex-wrap gap-2">
-                    {course.skills.map((skill, index) => (
+                    {displayCourse.skills.map((skill, index) => (
                       <span key={index} className="bg-coursera-blue/10 text-coursera-blue px-3 py-2 rounded-lg text-sm font-medium">
                         {skill}
                       </span>
@@ -302,7 +329,7 @@ By the end of this specialization, you will have mastered key concepts and gaine
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-4">Prerequisites</h3>
                   <ul className="space-y-2">
-                    {course.prerequisites.map((prereq, index) => (
+                    {displayCourse.prerequisites.map((prereq, index) => (
                       <li key={index} className="flex items-start space-x-3">
                         <ChevronRight className="w-4 h-4 text-gray-400 mt-1 flex-shrink-0" />
                         <span className="text-gray-700">{prereq}</span>
@@ -317,7 +344,7 @@ By the end of this specialization, you will have mastered key concepts and gaine
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Course Syllabus</h2>
                 <div className="space-y-4">
-                  {course.syllabus.map((week) => (
+                  {displayCourse.syllabus.map((week) => (
                     <div key={week.week} className="bg-white border border-gray-200 rounded-lg">
                       <div className="p-6 border-b border-gray-200">
                         <div className="flex items-center justify-between">
@@ -354,13 +381,13 @@ By the end of this specialization, you will have mastered key concepts and gaine
                 <div className="bg-white border border-gray-200 rounded-lg p-6">
                   <div className="flex items-start space-x-6">
                     <img
-                      src={course.instructorImage}
-                      alt={course.instructor}
+                      src={displayCourse.instructorImage}
+                      alt={displayCourse.instructor}
                       className="w-24 h-24 rounded-full object-cover"
                     />
                     <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">{course.instructor}</h3>
-                      <p className="text-gray-600 mb-4">{course.instructorTitle}</p>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">{displayCourse.instructor}</h3>
+                      <p className="text-gray-600 mb-4">{displayCourse.instructorTitle}</p>
                       <p className="text-gray-700 leading-relaxed mb-4">
                         Andrew Ng is a globally recognized leader in AI. He is the founder of DeepLearning.AI, 
                         co-founder of Coursera, and an Adjunct Professor at Stanford University. He was formerly 
@@ -392,13 +419,13 @@ By the end of this specialization, you will have mastered key concepts and gaine
                 <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
                   <div className="flex items-center space-x-6 mb-6">
                     <div className="text-center">
-                      <div className="text-4xl font-bold text-gray-900">{course.rating}</div>
+                      <div className="text-4xl font-bold text-gray-900">{displayCourse.rating}</div>
                       <div className="flex items-center justify-center space-x-1 mb-2">
                         {[...Array(5)].map((_, i) => (
                           <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
                         ))}
                       </div>
-                      <div className="text-sm text-gray-600">{course.reviewCount} reviews</div>
+                      <div className="text-sm text-gray-600">{displayCourse.reviewCount} reviews</div>
                     </div>
                     <div className="flex-1">
                       {[5, 4, 3, 2, 1].map((stars) => (

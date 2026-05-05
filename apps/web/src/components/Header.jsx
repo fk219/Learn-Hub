@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Search, Menu, X, User, ShoppingCart, Bell, BookOpen, Settings, LogOut } from 'lucide-react'
 import { gsap } from 'gsap'
+import { clearAccessToken } from '../lib/apiClient'
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -54,6 +55,7 @@ const Header = () => {
   const handleSignOut = () => {
     setIsAuthenticated(false)
     setUser(null)
+    clearAccessToken()
     localStorage.removeItem('user')
     localStorage.removeItem('cart')
     setCartCount(0)

@@ -1,55 +1,32 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Play, Clock, CheckCircle, BookOpen, Award, BarChart3 } from 'lucide-react'
+import { apiFetch } from '../lib/apiClient'
 
 const MyCourses = () => {
   const [enrolledCourses, setEnrolledCourses] = useState([])
   const [activeTab, setActiveTab] = useState('all')
 
   useEffect(() => {
-    // Mock enrolled courses data
-    const mockCourses = [
-      {
-        id: 1,
-        title: 'Complete React Development Course',
-        instructor: 'John Smith',
-        image: 'https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=400',
-        progress: 65,
-        totalLessons: 45,
-        completedLessons: 29,
-        duration: '40 hours',
-        enrolledDate: '2024-01-15',
-        status: 'in-progress',
-        lastWatched: 'Building React Components'
-      },
-      {
-        id: 2,
-        title: 'Data Science with Python',
-        instructor: 'Dr. Sarah Johnson',
-        image: 'https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=400',
-        progress: 100,
-        totalLessons: 32,
-        completedLessons: 32,
-        duration: '35 hours',
-        enrolledDate: '2024-01-10',
-        status: 'completed',
-        certificateUrl: '/certificates/data-science-python.pdf'
-      },
-      {
-        id: 3,
-        title: 'Digital Marketing Mastery',
-        instructor: 'Mike Wilson',
-        image: 'https://images.pexels.com/photos/265087/pexels-photo-265087.jpeg?auto=compress&cs=tinysrgb&w=400',
-        progress: 25,
-        totalLessons: 28,
-        completedLessons: 7,
-        duration: '25 hours',
-        enrolledDate: '2024-01-20',
-        status: 'in-progress',
-        lastWatched: 'Introduction to SEO'
-      }
-    ]
-    setEnrolledCourses(mockCourses)
+    apiFetch('/api/me/enrollments')
+      .then((r) => {
+        const mapped = (r.items || []).map((i) => ({
+          id: i.course?._id || i.course?.id || i.id,
+          title: i.course?.title || 'Course',
+          instructor: 'LearnHub',
+          image: i.course?.imageUrl || '',
+          progress: 0,
+          totalLessons: 0,
+          completedLessons: 0,
+          duration: 'Self-paced',
+          enrolledDate: i.createdAt ? String(i.createdAt).slice(0, 10) : '',
+          status: 'in-progress',
+        }))
+        setEnrolledCourses(mapped)
+      })
+      .catch(() => {
+        setEnrolledCourses([])
+      })
   }, [])
 
   const filteredCourses = enrolledCourses.filter(course => {

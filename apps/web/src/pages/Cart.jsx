@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Trash2, Plus, Minus, ShoppingBag, ArrowRight } from 'lucide-react'
-import { loadStripe } from '@stripe/stripe-js'
-
-const stripePromise = loadStripe('pk_test_your_publishable_key_here') // Replace with your Stripe publishable key
+import { apiFetch } from '../lib/apiClient'
 
 const Cart = () => {
   const [cartItems, setCartItems] = useState([])
@@ -37,41 +35,16 @@ const Cart = () => {
     setIsLoading(true)
     
     try {
-      // In a real application, you would send the cart data to your backend
-      // and create a Stripe checkout session
-      const response = await fetch('/api/create-checkout-session', {
+      const { checkoutUrl } = await apiFetch('/api/payments/checkout', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
-          items: cartItems.map(item => ({
-            id: item.id,
-            title: item.title,
-            price: item.price,
-            image: item.image
-          }))
+          courseIds: cartItems.map(i => i.id),
         }),
       })
 
-      const session = await response.json()
-      
-      // Redirect to Stripe Checkout
-      const stripe = await stripePromise
-      const { error } = await stripe.redirectToCheckout({
-        sessionId: session.id,
-      })
-
-      if (error) {
-        console.error('Stripe error:', error)
-        alert('Payment failed. Please try again.')
-      }
+      window.location.href = checkoutUrl
     } catch (error) {
-      console.error('Checkout error:', error)
-      // For demo purposes, simulate successful checkout
-      alert('Demo: Checkout successful! Courses added to your library.')
-      localStorage.removeItem('cart')
-      setCartItems([])
+      alert(error?.message || 'Checkout failed. Please try again.')
     } finally {
       setIsLoading(false)
     }

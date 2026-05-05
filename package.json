@@ -1,35 +1,16 @@
 {
-  "name": "modern-lms-frontend",
+  "name": "learnhub-monorepo",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "0.1.0",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "dev": "concurrently -n api,web,admin -c green,blue,magenta \"npm -w apps/api run dev\" \"npm -w apps/web run dev\" \"npm -w apps/admin run dev\"",
+    "build": "npm -w apps/api run build && npm -w apps/web run build && npm -w apps/admin run build",
+    "test": "npm -w apps/api test"
   },
-  "dependencies": {
-    "@react-oauth/google": "^0.12.1",
-    "@stripe/react-stripe-js": "^2.4.0",
-    "@stripe/stripe-js": "^2.4.0",
-    "gsap": "^3.12.2",
-    "lucide-react": "^0.294.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.20.1"
-  },
+  "workspaces": [
+    "apps/*"
+  ],
   "devDependencies": {
-    "@types/react": "^18.2.37",
-    "@types/react-dom": "^18.2.15",
-    "@vitejs/plugin-react": "^4.1.1",
-    "autoprefixer": "^10.4.16",
-    "eslint": "^8.53.0",
-    "eslint-plugin-react": "^7.33.2",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.4.4",
-    "postcss": "^8.4.31",
-    "tailwindcss": "^3.3.5",
-    "vite": "^4.5.14"
+    "concurrently": "^9.0.0"
   }
 }
