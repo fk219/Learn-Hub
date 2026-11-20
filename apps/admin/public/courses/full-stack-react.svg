@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+  <rect width="1200" height="900" fill="#111318"/>
+  <g fill="#2743D6">
+    <rect x="110" y="120" width="220" height="220"/>
+    <rect x="360" y="120" width="220" height="220" opacity=".65"/>
+    <rect x="610" y="120" width="220" height="220" opacity=".35"/>
+  </g>
+  <rect x="110" y="370" width="720" height="120" fill="#C6F24E"/>
+  <path d="M870 370h220v120H870z" fill="#F1EFE8"/>
+  <text x="110" y="600" font-family="Consolas, monospace" font-size="76" font-weight="700" fill="#C6F24E">&lt;route /&gt;</text>
+  <text x="110" y="690" font-family="Consolas, monospace" font-size="38" fill="#F1EFE8" opacity=".6">fetch · state · auth · ship</text>
+  <text x="1090" y="820" font-family="Arial, sans-serif" font-size="160" font-weight="700" fill="#2743D6" text-anchor="end">02</text>
+</svg>

@@ -1,287 +1,228 @@
-import React, { useState, useEffect } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Search, Menu, X, User, ShoppingCart, Bell, BookOpen, Settings, LogOut } from 'lucide-react'
-import { gsap } from 'gsap'
-import { clearAccessToken } from '../lib/apiClient'
+import { useEffect, useRef, useState } from 'react'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { FaArrowRight, FaBars, FaMagnifyingGlass, FaXmark } from 'react-icons/fa6'
+import { useAuth } from '../contexts/AuthContext'
 
-const Header = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isScrolled, setIsScrolled] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [user, setUser] = useState(null)
-  const [showNotifications, setShowNotifications] = useState(false)
-  const [showUserMenu, setShowUserMenu] = useState(false)
-  const [cartCount, setCartCount] = useState(0)
-  const location = useLocation()
+const navItems = [
+  { label: 'Courses', to: '/courses' },
+  { label: 'My learning', to: '/my-courses' },
+  { label: 'About', to: '/about' }
+]
+
+function navClass({ isActive }) {
+  return `font-mono text-[10px] uppercase tracking-[0.14em] transition-colors ${
+    isActive ? 'text-cobalt' : 'text-muted hover:text-ink'
+  }`
+}
+
+export default function Header() {
+  const { user, loading, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [search, setSearch] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const dialogRef = useRef(null)
+  const closeRef = useRef(null)
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10)
-    }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+    setMenuOpen(false)
+  }, [location.pathname])
 
   useEffect(() => {
-    // Check for user session
-    const userData = localStorage.getItem('user')
-    if (userData) {
-      setUser(JSON.parse(userData))
-      setIsAuthenticated(true)
+    const dialog = dialogRef.current
+    if (!dialog) return
+
+    if (menuOpen) {
+      if (typeof dialog.showModal === 'function') dialog.showModal()
+      else dialog.setAttribute('open', '')
+      document.body.style.overflow = 'hidden'
+      closeRef.current?.focus()
+    } else {
+      if (typeof dialog.close === 'function') dialog.close()
+      else dialog.removeAttribute('open')
+      document.body.style.overflow = ''
     }
 
-    // Check cart count
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]')
-    setCartCount(cart.length)
-  }, [])
-
-  useEffect(() => {
-    gsap.fromTo('.header-animate', 
-      { y: -100, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.8, ease: 'power2.out' }
-    )
-  }, [])
-
-  const handleSearch = (e) => {
-    e.preventDefault()
-    if (searchTerm.trim()) {
-      navigate(`/courses?search=${encodeURIComponent(searchTerm.trim())}`)
-      setSearchTerm('')
+    return () => {
+      document.body.style.overflow = ''
     }
+  }, [menuOpen])
+
+  const submitSearch = (event) => {
+    event.preventDefault()
+    const query = search.trim()
+    navigate(query ? `/courses?search=${encodeURIComponent(query)}` : '/courses')
+    setSearch('')
+    setMenuOpen(false)
   }
 
   const handleSignOut = () => {
-    setIsAuthenticated(false)
-    setUser(null)
-    clearAccessToken()
-    localStorage.removeItem('user')
-    localStorage.removeItem('cart')
-    setCartCount(0)
-    setShowUserMenu(false)
+    logout()
     navigate('/')
   }
 
-  const navItems = [
-    { name: 'Home', path: '/' },
-    { name: 'Courses', path: '/courses' },
-    { name: 'About', path: '/about' },
-    { name: 'Contact', path: '/contact' },
-  ]
-
-  const notifications = [
-    { id: 1, message: 'New course available: Advanced React', time: '2 hours ago', unread: true },
-    { id: 2, message: 'Assignment due tomorrow', time: '1 day ago', unread: true },
-    { id: 3, message: 'Course completed: JavaScript Basics', time: '3 days ago', unread: false },
-  ]
-
   return (
-    <header className={`header-animate fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-      isScrolled ? 'bg-white shadow-md' : 'bg-white/95 backdrop-blur-sm'
-    }`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14">
-          {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">L</span>
-            </div>
-            <span className="text-xl font-bold text-gray-900">LearnHub</span>
-          </Link>
+    <header className="sticky top-0 z-40 border-b border-line bg-chalk">
+      <div className="container-studio flex h-16 items-center justify-between gap-4 lg:h-20">
+        <Link to="/" className="flex min-w-0 items-center gap-3" aria-label="LearnHub home">
+          <span className="grid h-9 w-9 shrink-0 grid-cols-2 gap-0.5" aria-hidden="true">
+            <span className="col-span-1 row-span-2 bg-cobalt" />
+            <span className="bg-acid" />
+            <span className="border border-ink" />
+          </span>
+          <span className="flex flex-col leading-none">
+            <span className="font-display text-2xl font-semibold tracking-tight text-ink">LearnHub</span>
+            <span className="mt-1 hidden font-mono text-[8px] uppercase tracking-[0.2em] text-muted sm:block">
+              Learn by making
+            </span>
+          </span>
+        </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6">
-            {navItems.map((item) => (
-              <Link
-                key={item.name}
-                to={item.path}
-                className={`text-sm font-medium transition-colors duration-200 hover:text-blue-600 ${
-                  location.pathname === item.path
-                    ? 'text-blue-600 border-b-2 border-blue-600 pb-1'
-                    : 'text-gray-700'
-                }`}
-              >
-                {item.name}
+        <nav aria-label="Primary" className="hidden items-center gap-7 lg:flex">
+          {navItems.map((item) => (
+            <NavLink key={item.to} to={item.to} className={navClass}>
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <form role="search" onSubmit={submitSearch} className="relative hidden w-56 xl:block">
+          <label htmlFor="header-search" className="sr-only">Search courses</label>
+          <FaMagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" aria-hidden="true" />
+          <input
+            id="header-search"
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search courses"
+            className="min-h-10 w-full border border-line bg-paper pl-9 pr-3 text-sm text-ink placeholder:text-muted/70 focus:border-cobalt focus:outline-none"
+          />
+        </form>
+
+        <div className="hidden items-center gap-3 lg:flex">
+          {!loading && (user ? (
+            <>
+              <Link to="/my-courses" className="link-line font-mono text-[10px] uppercase tracking-[0.14em] text-muted hover:text-ink">
+                {user.name || user.email}
               </Link>
-            ))}
-          </nav>
-
-          {/* Search Bar */}
-          <div className="hidden lg:flex items-center flex-1 max-w-md mx-6">
-            <form onSubmit={handleSearch} className="relative w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search courses..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              />
-            </form>
-          </div>
-
-          {/* Right Side Icons */}
-          <div className="flex items-center space-x-3">
-            {isAuthenticated && (
-              <>
-                {/* Notifications */}
-                <div className="relative">
-                  <button 
-                    onClick={() => setShowNotifications(!showNotifications)}
-                    className="p-2 text-gray-600 hover:text-blue-600 transition-colors relative"
-                  >
-                    <Bell className="w-5 h-5" />
-                    {notifications.filter(n => n.unread).length > 0 && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                        {notifications.filter(n => n.unread).length}
-                      </span>
-                    )}
-                  </button>
-                  
-                  {showNotifications && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                      <div className="p-4 border-b border-gray-200">
-                        <h3 className="font-semibold text-gray-900 text-sm">Notifications</h3>
-                      </div>
-                      <div className="max-h-64 overflow-y-auto">
-                        {notifications.map((notification) => (
-                          <div key={notification.id} className={`p-4 border-b border-gray-100 hover:bg-gray-50 ${notification.unread ? 'bg-blue-50' : ''}`}>
-                            <p className="text-sm text-gray-900">{notification.message}</p>
-                            <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="p-3 text-center border-t border-gray-200">
-                        <button className="text-sm text-blue-600 hover:text-blue-700">View all notifications</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Cart */}
-                <Link to="/cart" className="p-2 text-gray-600 hover:text-blue-600 transition-colors relative">
-                  <ShoppingCart className="w-5 h-5" />
-                  {cartCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 text-white text-xs rounded-full flex items-center justify-center">
-                      {cartCount}
-                    </span>
-                  )}
-                </Link>
-
-                {/* User Menu */}
-                <div className="relative">
-                  <button 
-                    onClick={() => setShowUserMenu(!showUserMenu)}
-                    className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                      {user?.name?.charAt(0) || 'U'}
-                    </div>
-                  </button>
-                  
-                  {showUserMenu && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                      <div className="p-3 border-b border-gray-200">
-                        <p className="font-medium text-gray-900 text-sm">{user?.name}</p>
-                        <p className="text-xs text-gray-500">{user?.email}</p>
-                      </div>
-                      <div className="py-2">
-                        <Link to="/my-courses" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                          <BookOpen className="w-4 h-4 mr-3" />
-                          My Courses
-                        </Link>
-                        <Link to="/profile" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                          <User className="w-4 h-4 mr-3" />
-                          Profile
-                        </Link>
-                        <Link to="/settings" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                          <Settings className="w-4 h-4 mr-3" />
-                          Settings
-                        </Link>
-                        <hr className="my-2" />
-                        <button onClick={handleSignOut} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                          <LogOut className="w-4 h-4 mr-3" />
-                          Sign Out
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
-            {!isAuthenticated && (
-              <div className="hidden md:flex items-center space-x-2">
-                <Link to="/signin" className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors px-3 py-2">
-                  Sign In
-                </Link>
-                <Link to="/signup" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
-                  Sign Up
-                </Link>
-              </div>
-            )}
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 text-gray-600 hover:text-blue-600 transition-colors"
-            >
-              {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
+              <span className="h-3 w-px bg-line" aria-hidden="true" />
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted transition-colors hover:text-cobalt"
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/signin" className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted hover:text-ink">
+                Sign in
+              </Link>
+              <Link to="/signup" className="btn-primary min-h-10 px-4 py-2">
+                Start learning
+              </Link>
+            </>
+          ))}
         </div>
 
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-200">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              {navItems.map((item) => (
+        <button
+          type="button"
+          onClick={() => setMenuOpen(true)}
+          className="flex h-10 w-10 items-center justify-center text-ink lg:hidden"
+          aria-label="Open menu"
+          aria-expanded={menuOpen}
+          aria-controls="learnhub-menu"
+        >
+          <FaBars className="h-5 w-5" aria-hidden="true" />
+        </button>
+      </div>
+
+      <dialog
+        ref={dialogRef}
+        id="learnhub-menu"
+        aria-label="Site menu"
+        onClose={() => setMenuOpen(false)}
+        className="m-0 h-full w-full max-w-none border-0 bg-chalk p-0 text-ink backdrop:bg-chalk lg:hidden"
+      >
+        <div className="flex h-full flex-col">
+          <div className="container-studio flex h-16 items-center justify-between border-b border-line">
+            <span className="flex items-center gap-3">
+              <span className="grid h-9 w-9 grid-cols-2 gap-0.5" aria-hidden="true">
+                <span className="col-span-1 row-span-2 bg-cobalt" />
+                <span className="bg-acid" />
+                <span className="border border-ink" />
+              </span>
+              <span className="font-display text-xl font-semibold tracking-tight">LearnHub</span>
+            </span>
+            <button
+              ref={closeRef}
+              type="button"
+              onClick={() => setMenuOpen(false)}
+              className="flex h-10 w-10 items-center justify-center text-ink"
+              aria-label="Close menu"
+            >
+              <FaXmark className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="container-studio flex flex-1 flex-col justify-center py-8">
+            <form role="search" onSubmit={submitSearch} className="mb-8">
+              <label htmlFor="mobile-search" className="sr-only">Search courses</label>
+              <div className="relative">
+                <FaMagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+                <input
+                  id="mobile-search"
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search the course catalogue"
+                  className="input-field pl-10"
+                />
+              </div>
+            </form>
+
+            <nav aria-label="Mobile primary" className="flex flex-col">
+              {navItems.map((item, index) => (
                 <Link
-                  key={item.name}
-                  to={item.path}
-                  onClick={() => setIsMenuOpen(false)}
-                  className={`block px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                    location.pathname === item.path
-                      ? 'text-blue-600 bg-blue-50'
-                      : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
-                  }`}
+                  key={item.to}
+                  to={item.to}
+                  className="flex items-baseline gap-4 border-b border-line py-5 font-display text-4xl font-semibold tracking-[-0.03em] transition-colors hover:text-cobalt"
                 >
-                  {item.name}
+                  <span className="font-mono text-[10px] tracking-[0.16em] text-muted">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  {item.label}
                 </Link>
               ))}
-              
-              {/* Mobile Search */}
-              <div className="px-3 py-2">
-                <form onSubmit={handleSearch} className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="Search courses..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  />
-                </form>
-              </div>
-              
-              {/* Mobile Auth Buttons */}
-              {!isAuthenticated && (
-                <div className="px-3 py-2 space-y-2">
-                  <Link to="/signin" className="block w-full text-center bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm">
-                    Sign In
-                  </Link>
-                  <Link to="/signup" className="block w-full text-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm">
-                    Sign Up
-                  </Link>
-                </div>
-              )}
-            </div>
+            </nav>
           </div>
-        )}
-      </div>
+
+          <div className="container-studio border-t border-line py-6">
+            {!loading && (user ? (
+              <>
+                <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted">Signed in as</p>
+                <p className="mt-1 text-sm text-ink">{user.name || user.email}</p>
+                <div className="mt-4 grid gap-2">
+                  <Link to="/my-courses" className="btn-primary">My learning</Link>
+                  <button type="button" onClick={handleSignOut} className="btn-outline">Sign out</button>
+                </div>
+              </>
+            ) : (
+              <div className="grid gap-2">
+                <Link to="/signup" className="btn-primary">
+                  Create an account
+                  <FaArrowRight className="h-3 w-3" aria-hidden="true" />
+                </Link>
+                <Link to="/signin" className="btn-outline">Sign in</Link>
+              </div>
+            ))}
+            <p className="mt-5 font-mono text-[9px] uppercase tracking-[0.14em] text-muted">
+              Portfolio demo · Seeded course catalogue
+            </p>
+          </div>
+        </div>
+      </dialog>
     </header>
   )
 }
-
-export default Header

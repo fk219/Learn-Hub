@@ -1,114 +1,71 @@
-import React from 'react'
 import { Link } from 'react-router-dom'
-import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone } from 'lucide-react'
+import { FaArrowUpRightFromSquare } from 'react-icons/fa6'
 
-const Footer = () => {
-  const quickLinks = [
-    'About Us',
-    'Courses',
-    'Contact',
-    'Privacy Policy',
-    'Terms of Service'
-  ]
+const links = [
+  { label: 'Courses', to: '/courses' },
+  { label: 'My learning', to: '/my-courses' },
+  { label: 'About', to: '/about' }
+]
 
-  const socialLinks = [
-    { icon: Facebook, href: '#', label: 'Facebook' },
-    { icon: Twitter, href: '#', label: 'Twitter' },
-    { icon: Instagram, href: '#', label: 'Instagram' },
-    { icon: Linkedin, href: '#', label: 'LinkedIn' }
-  ]
-
+export default function Footer() {
   return (
-    <footer className="bg-gray-900 text-white">
-      {/* Main Footer Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Company Info */}
-          <div>
-            <Link to="/" className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">L</span>
-              </div>
-              <span className="text-xl font-bold">LearnHub</span>
-            </Link>
-            <p className="text-gray-400 mb-4 text-sm">
-              Empowering learners worldwide with high-quality online education.
-            </p>
-            
-            {/* Contact Info */}
-            <div className="space-y-2 text-sm text-gray-400">
-              <div className="flex items-center space-x-2">
-                <Mail className="w-4 h-4" />
-                <span>support@learnhub.com</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Phone className="w-4 h-4" />
-                <span>+1 (555) 123-4567</span>
-              </div>
-            </div>
-          </div>
+    <footer className="border-t border-ink bg-ink text-chalk">
+      <div className="container-studio grid gap-12 py-16 md:grid-cols-[1.7fr_1fr_1fr] lg:py-20">
+        <div>
+          <Link to="/" className="inline-flex items-center gap-3" aria-label="LearnHub home">
+            <span className="grid h-10 w-10 grid-cols-2 gap-0.5" aria-hidden="true">
+              <span className="col-span-1 row-span-2 bg-cobalt" />
+              <span className="bg-acid" />
+              <span className="border border-chalk" />
+            </span>
+            <span className="font-display text-2xl font-semibold tracking-tight">LearnHub</span>
+          </Link>
+          <p className="mt-6 max-w-sm text-sm leading-relaxed text-chalk/60">
+            A studio-style learning platform built around a route: see where you are, finish the next
+            lesson, and keep the progress.
+          </p>
+          <p className="mt-4 font-mono text-[9px] uppercase leading-relaxed tracking-[0.14em] text-chalk/35">
+            Portfolio demo · Seeded catalogue · No real payments
+          </p>
+        </div>
 
-          {/* Quick Links */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
-            <ul className="space-y-2">
-              {quickLinks.map((link) => (
-                <li key={link}>
-                  <Link
-                    to="#"
-                    className="text-gray-400 hover:text-white transition-colors duration-200 text-sm"
-                  >
-                    {link}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+        <nav aria-label="Footer">
+          <h2 className="font-mono text-[9px] uppercase tracking-[0.16em] text-chalk/40">Explore</h2>
+          <ul className="mt-5 space-y-3">
+            {links.map((link) => (
+              <li key={link.to}>
+                <Link to={link.to} className="text-sm text-chalk/70 transition-colors hover:text-chalk">
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-          {/* Newsletter */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Stay Updated</h3>
-            <p className="text-gray-400 text-sm mb-4">Get the latest courses and updates.</p>
-            <div className="flex">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white text-sm"
-              />
-              <button className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-r-lg transition-colors duration-200 font-medium text-sm">
-                Subscribe
-              </button>
-            </div>
-          </div>
+        <div>
+          <h2 className="font-mono text-[9px] uppercase tracking-[0.16em] text-chalk/40">Source</h2>
+          <p className="mt-5 text-sm leading-relaxed text-chalk/60">
+            React, Express, MongoDB. The course catalogue, enrollment, and lesson progress are backed
+            by the API.
+          </p>
+          <a
+            href="https://github.com/fk219/Learn-Hub"
+            target="_blank"
+            rel="noreferrer"
+            className="link-line mt-4 inline-flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.14em] text-chalk/70 transition-colors hover:text-chalk"
+          >
+            GitHub
+            <FaArrowUpRightFromSquare className="h-3 w-3" aria-hidden="true" />
+          </a>
         </div>
       </div>
 
-      {/* Bottom Footer */}
-      <div className="border-t border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col md:flex-row items-center justify-between">
-            <div className="text-gray-400 text-sm mb-4 md:mb-0">
-              © 2024 LearnHub. All rights reserved.
-            </div>
-            
-            {/* Social Links */}
-            <div className="flex items-center space-x-4">
-              {socialLinks.map(({ icon: Icon, href, label }) => (
-                <a
-                  key={label}
-                  href={href}
-                  className="text-gray-400 hover:text-white transition-colors duration-200"
-                  aria-label={label}
-                >
-                  <Icon className="w-4 h-4" />
-                </a>
-              ))}
-            </div>
-          </div>
+      <div className="border-t border-chalk/10">
+        <div className="container-studio flex flex-col justify-between gap-3 py-6 font-mono text-[9px] uppercase tracking-[0.14em] text-chalk/40 sm:flex-row">
+          <span>© {new Date().getFullYear()} LearnHub</span>
+          <span>Built by Furqan</span>
         </div>
       </div>
     </footer>
   )
 }
-
-export default Footer

@@ -1,0 +1,62 @@
+services:
+  - type: web
+    name: learnhub-api
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci && npm run build -w apps/api
+    startCommand: npm start -w apps/api
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "20"
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: ADMIN_EMAIL
+        value: admin@learnhub.example
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: DEMO_EMAIL
+        value: demo@learnhub.example
+      - key: DEMO_PASSWORD
+        sync: false
+      - key: STRIPE_MOCK
+        value: "1"
+
+  - type: web
+    name: learnhub-web
+    runtime: static
+    buildCommand: npm ci && npm run build -w apps/web
+    staticPublishPath: apps/web/dist
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: VITE_API_URL
+        value: https://learnhub-api.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  - type: web
+    name: learnhub-admin
+    runtime: static
+    buildCommand: npm ci && npm run build -w apps/admin
+    staticPublishPath: apps/admin/dist
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: VITE_API_URL
+        value: https://learnhub-api.onrender.com
+      - key: VITE_WEB_URL
+        value: https://learnhub-web.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

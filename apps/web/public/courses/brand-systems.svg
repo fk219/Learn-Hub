@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+  <rect width="1200" height="900" fill="#2743D6"/>
+  <circle cx="980" cy="640" r="170" fill="#C6F24E"/>
+  <rect x="850" y="430" width="180" height="180" fill="#F1EFE8"/>
+  <rect x="850" y="430" width="180" height="180" fill="none" stroke="#111318" stroke-width="8"/>
+  <path d="M120 700h960" stroke="#F1EFE8" stroke-width="4" opacity=".5"/>
+  <text x="120" y="180" font-family="Arial, sans-serif" font-size="72" font-weight="700" fill="#F1EFE8" letter-spacing="-2">THE SYSTEM</text>
+  <text x="120" y="260" font-family="Arial, sans-serif" font-size="72" font-weight="700" fill="#F1EFE8" letter-spacing="-2">AROUND THE LOGO</text>
+  <text x="120" y="800" font-family="Arial, sans-serif" font-size="48" fill="#C6F24E" letter-spacing="4">TYPE / COLOR / PRIMITIVES / RULES</text>
+  <text x="1090" y="180" font-family="Arial, sans-serif" font-size="160" font-weight="700" fill="#111318" text-anchor="end">04</text>
+</svg>

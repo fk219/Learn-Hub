@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+  <rect width="1200" height="900" fill="#111318"/>
+  <g fill="none" stroke="#F1EFE8" stroke-width="4" opacity=".35">
+    <rect x="90" y="90" width="1020" height="720" rx="8"/>
+    <path d="M90 210h1020M90 330h1020M90 450h1020M90 570h1020M90 690h1020"/>
+    <path d="M270 90v720M450 90v720M630 90v720M810 90v720M990 90v720"/>
+  </g>
+  <rect x="110" y="110" width="140" height="80" fill="#2743D6" stroke="#C6F24E" stroke-width="6"/>
+  <rect x="290" y="230" width="140" height="80" fill="none" stroke="#C6F24E" stroke-width="6"/>
+  <rect x="650" y="470" width="140" height="80" fill="#2743D6" stroke="#C6F24E" stroke-width="6"/>
+  <circle cx="920" cy="650" r="54" fill="#C6F24E"/>
+  <text x="110" y="790" font-family="Arial, sans-serif" font-size="70" font-weight="700" fill="#F1EFE8" letter-spacing="-2">KEYBOARD / CONTRAST / MOTION</text>
+  <text x="1090" y="180" font-family="Arial, sans-serif" font-size="160" font-weight="700" fill="#2743D6" text-anchor="end">06</text>
+</svg>

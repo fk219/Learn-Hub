@@ -1,202 +1,91 @@
-import React, { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { gsap } from 'gsap'
-import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react'
-import { apiFetch, setAccessToken } from '../lib/apiClient'
+import { useContext, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Eye, EyeOff } from 'lucide-react'
+import { AuthContext } from '../contexts/AuthContext'
+import AuthFrame from '../components/AuthFrame'
 
-
-const SignIn = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [errors, setErrors] = useState({})
+export default function SignIn() {
+  const { login } = useContext(AuthContext)
   const navigate = useNavigate()
+  const location = useLocation()
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  useEffect(() => {
-    gsap.fromTo('.signin-form',
-      { y: 20, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.6, ease: 'power2.out' }
-    )
-  }, [])
+  const from = location.state?.from
+  const destination = from ? `${from.pathname}${from.search || ''}` : '/my-courses'
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }))
-    }
-  }
-
-  const validateForm = () => {
-    const newErrors = {}
-    
-    if (!formData.email) {
-      newErrors.email = 'Email is required'
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address'
-    }
-    
-    if (!formData.password) {
-      newErrors.password = 'Password is required'
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters'
-    }
-    
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    
-    if (!validateForm()) return
-    
-    setIsLoading(true)
-    
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setError('')
+    setLoading(true)
     try {
-      const data = await apiFetch('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-        }),
-      })
-
-      setAccessToken(data.accessToken)
-      localStorage.setItem('user', JSON.stringify(data.user))
-      navigate('/')
-    } catch (error) {
-      setErrors({ general: error?.message || 'An error occurred. Please try again.' })
+      await login(event.target.email.value.trim(), event.target.password.value)
+      navigate(destination, { replace: true })
+    } catch (err) {
+      setError(err.message || 'Sign in failed.')
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
   return (
-    <div className="pt-14 min-h-screen bg-gray-50 flex items-center justify-center py-8 px-4">
-      <div className="signin-form max-w-md w-full space-y-6">
-        <div className="text-center">
-          <Link to="/" className="flex items-center justify-center space-x-2 mb-6">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">L</span>
-            </div>
-            <span className="text-2xl font-bold text-gray-900">LearnHub</span>
-          </Link>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome back</h2>
-          <p className="text-gray-600 text-sm">Sign in to continue your learning journey</p>
+    <AuthFrame
+      eyebrow="Learner sign in"
+      title="Return to the route."
+      description="Your progress, enrollments, and next lesson are waiting."
+    >
+      <form onSubmit={handleSubmit} className="mt-8 max-w-md space-y-5">
+        <div>
+          <label htmlFor="signin-email" className="label">Email</label>
+          <input id="signin-email" name="email" type="email" autoComplete="email" required className="input-field mt-2" placeholder="you@example.com" />
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {errors.general && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-lg text-sm">
-                {errors.general}
-              </div>
-            )}
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${
-                    errors.email ? 'border-red-300' : 'border-gray-200'
-                  }`}
-                  placeholder="Enter your email"
-                />
-              </div>
-              {errors.email && (
-                <p className="mt-1 text-xs text-red-600">{errors.email}</p>
-              )}
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${
-                    errors.password ? 'border-red-300' : 'border-gray-200'
-                  }`}
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="mt-1 text-xs text-red-600">{errors.password}</p>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  className="w-3 h-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="ml-2 text-xs text-gray-600">Remember me</span>
-              </label>
-              <Link to="/forgot-password" className="text-xs text-blue-600 hover:text-blue-700">
-                Forgot password?
-              </Link>
-            </div>
-
+        <div>
+          <label htmlFor="signin-password" className="label">Password</label>
+          <div className="relative">
+            <input
+              id="signin-password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              required
+              className="input-field mt-2 pr-12"
+              placeholder="Your password"
+            />
             <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              type="button"
+              onClick={() => setShowPassword((value) => !value)}
+              className="absolute right-0 top-2 flex h-12 w-12 items-center justify-center text-muted transition-colors hover:text-ink"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
-              {isLoading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <>
-                  <span>Sign In</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
+              {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
             </button>
-          </form>
-
-          <div className="mt-4 text-center">
-            <p className="text-xs text-gray-600">
-              Don't have an account?{' '}
-              <Link to="/signup" className="font-medium text-blue-600 hover:text-blue-700">
-                Sign up for free
-              </Link>
-            </p>
           </div>
         </div>
+
+        {error && (
+          <p className="border border-cobalt/30 bg-cobalt/5 px-4 py-3 text-sm text-cobalt" role="alert">{error}</p>
+        )}
+
+        <button type="submit" disabled={loading} className="btn-primary w-full disabled:opacity-50">
+          {loading ? 'Signing in…' : 'Sign in'}
+        </button>
+
+        <p className="text-sm text-muted">
+          New here?{' '}
+          <Link to="/signup" state={location.state} className="link-line font-medium text-cobalt">Create an account</Link>
+        </p>
+      </form>
+
+      <div className="mt-8 max-w-md border border-line bg-chalk p-4">
+        <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-cobalt">Seeded demo learner</p>
+        <dl className="mt-3 space-y-1.5 font-mono text-[11px] text-ink">
+          <div className="flex flex-wrap gap-x-2"><dt className="text-muted">Email</dt><dd>demo@learnhub.example</dd></div>
+          <div className="flex flex-wrap gap-x-2"><dt className="text-muted">Password</dt><dd>LearnHubDemo123!</dd></div>
+        </dl>
+        <p className="mt-3 text-[11px] leading-relaxed text-muted">Seeded progress only. Do not enter personal information.</p>
       </div>
-    </div>
+    </AuthFrame>
   )
 }
-
-export default SignIn

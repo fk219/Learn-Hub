@@ -5,6 +5,8 @@ const EnrollmentSchema = new mongoose.Schema(
     userId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
     courseId: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Course' },
     status: { type: String, required: true, enum: ['active', 'revoked'], default: 'active' },
+    completedLessons: { type: [String], default: [] },
+    lastLessonId: { type: String, default: null },
   },
   { timestamps: true }
 )

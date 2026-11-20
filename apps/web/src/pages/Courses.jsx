@@ -1,337 +1,215 @@
-import React, { useState, useEffect } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { Search, Filter, Star, Clock, Users, ChevronDown, ShoppingCart, Heart } from 'lucide-react'
-import { gsap } from 'gsap'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { FaMagnifyingGlass, FaXmark } from 'react-icons/fa6'
 import { apiFetch } from '../lib/apiClient'
+import CourseCard from '../components/CourseCard'
 
-const Courses = () => {
+const SORTS = [
+  { value: 'newest', label: 'Newest first' },
+  { value: 'price-low', label: 'Price, low to high' },
+  { value: 'price-high', label: 'Price, high to low' },
+  { value: 'title', label: 'Title, A–Z' }
+]
+
+export default function Courses() {
   const [searchParams] = useSearchParams()
-  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '')
-  const [selectedCategory, setSelectedCategory] = useState('all')
-  const [selectedLevel, setSelectedLevel] = useState('all')
-  const [sortBy, setSortBy] = useState('popular')
-  const [showFilters, setShowFilters] = useState(false)
   const [courses, setCourses] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
+
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '')
+  const [category, setCategory] = useState('all')
+  const [level, setLevel] = useState('all')
+  const [sort, setSort] = useState('newest')
 
   useEffect(() => {
-    const urlSearchTerm = searchParams.get('search') || ''
-    setSearchTerm(urlSearchTerm)
+    setSearchTerm(searchParams.get('search') || '')
   }, [searchParams])
 
   useEffect(() => {
-    gsap.fromTo('.course-card',
-      { y: 20, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: 'power2.out' }
-    )
-  }, [selectedCategory, selectedLevel, sortBy, searchTerm])
-
-  useEffect(() => {
+    let active = true
+    setLoading(true)
+    setError('')
     apiFetch('/api/courses')
-      .then((r) => {
-        const mapped = (r.items || []).map((c) => ({
-          id: c._id,
-          title: c.title,
-          instructor: 'LearnHub',
-          category: c.category,
-          level: c.level,
-          rating: 4.8,
-          students: '0',
-          duration: 'Self-paced',
-          image: c.imageUrl,
-          price: Math.round((c.priceCents || 0) / 100),
-          originalPrice: null,
-          description: c.description,
-          features: ['Certificate of completion', 'Lifetime access'],
-          createdAt: c.createdAt,
-        }))
-        setCourses(mapped)
+      .then((result) => {
+        if (active) setCourses(result.items || [])
       })
       .catch(() => {
-        setCourses([])
+        if (active) setError('The catalogue could not be loaded.')
       })
-  }, [])
-
-  const addToCart = (course) => {
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]')
-    const existingItem = cart.find(item => item.id === course.id)
-    
-    if (!existingItem) {
-      cart.push(course)
-      localStorage.setItem('cart', JSON.stringify(cart))
-      alert('Course added to cart!')
-      window.location.reload() // Refresh to update cart count
-    } else {
-      alert('Course already in cart!')
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
     }
+  }, [reloadKey])
+
+  const categories = useMemo(
+    () => ['all', ...Array.from(new Set(courses.map((course) => course.category).filter(Boolean))).sort()],
+    [courses]
+  )
+  const levels = useMemo(
+    () => ['all', ...Array.from(new Set(courses.map((course) => course.level).filter(Boolean))).sort()],
+    [courses]
+  )
+
+  const filtered = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase()
+    return courses
+      .filter((course) => {
+        if (query) {
+          const haystack = `${course.title} ${course.description} ${course.category}`.toLowerCase()
+          if (!haystack.includes(query)) return false
+        }
+        if (category !== 'all' && course.category !== category) return false
+        if (level !== 'all' && course.level !== level) return false
+        return true
+      })
+      .sort((a, b) => {
+        if (sort === 'price-low') return a.priceCents - b.priceCents
+        if (sort === 'price-high') return b.priceCents - a.priceCents
+        if (sort === 'title') return a.title.localeCompare(b.title)
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+      })
+  }, [courses, searchTerm, category, level, sort])
+
+  const hasFilters = Boolean(searchTerm || category !== 'all' || level !== 'all')
+
+  const clear = () => {
+    setSearchTerm('')
+    setCategory('all')
+    setLevel('all')
+    setSort('newest')
   }
 
-  const categories = [
-    { id: 'all', name: 'All Categories' },
-    { id: 'technology', name: 'Technology' },
-    { id: 'business', name: 'Business' },
-    { id: 'design', name: 'Design' },
-    { id: 'marketing', name: 'Marketing' },
-    { id: 'data-science', name: 'Data Science' }
-  ]
-
-  const levels = [
-    { id: 'all', name: 'All Levels' },
-    { id: 'beginner', name: 'Beginner' },
-    { id: 'intermediate', name: 'Intermediate' },
-    { id: 'advanced', name: 'Advanced' }
-  ]
-
-  const filteredCourses = courses.filter(course => {
-    const matchesSearch = searchTerm === '' || 
-                         course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.instructor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = selectedCategory === 'all' || course.category === selectedCategory
-    const matchesLevel = selectedLevel === 'all' || course.level === selectedLevel
-    
-    return matchesSearch && matchesCategory && matchesLevel
-  })
-
-  const sortedCourses = [...filteredCourses].sort((a, b) => {
-    switch (sortBy) {
-      case 'rating':
-        return b.rating - a.rating
-      case 'price-low':
-        return a.price - b.price
-      case 'price-high':
-        return b.price - a.price
-      case 'newest':
-        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-      default: // popular
-        return parseInt(b.students.replace(/[^\d]/g, '')) - parseInt(a.students.replace(/[^\d]/g, ''))
-    }
-  })
-
   return (
-    <div className="pt-14 min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            {searchTerm ? `Search Results for "${searchTerm}"` : 'Explore Courses'}
-          </h1>
-          <p className="text-sm text-gray-600 mb-4">
-            {searchTerm 
-              ? `Found ${sortedCourses.length} courses matching your search`
-              : 'Discover high-quality courses to advance your skills'
-            }
+    <div className="bg-chalk">
+      <section className="container-studio pb-10 pt-12 lg:pb-14 lg:pt-16" aria-labelledby="courses-title">
+        <div className="flex flex-col justify-between gap-8 border-b border-line pb-8 lg:flex-row lg:items-end">
+          <div>
+            <p className="eyebrow">Catalogue / {courses.length || '—'} routes</p>
+            <h1 id="courses-title" className="mt-4 max-w-[12ch] font-display text-[clamp(3rem,6.5vw,5.8rem)] font-semibold leading-[0.9] tracking-[-0.05em] text-ink">
+              The course <span className="italic text-cobalt">catalogue.</span>
+            </h1>
+          </div>
+          <p className="max-w-sm text-base leading-relaxed text-muted">
+            Each course is a route of modules, lessons, and work. Filter by the room you want to spend
+            time in.
           </p>
-          
-          {/* Search Bar */}
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search courses..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-            />
-          </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Sidebar Filters */}
-          <div className="lg:w-64 flex-shrink-0">
-            <div className="bg-white rounded-lg shadow-sm p-4 sticky top-20">
-              <div className="flex items-center justify-between mb-4 lg:hidden">
-                <h3 className="font-semibold text-gray-900 text-sm">Filters</h3>
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="p-1 text-gray-500 hover:text-gray-700"
-                >
-                  <Filter className="w-4 h-4" />
-                </button>
+        <form
+          role="search"
+          aria-label="Filter courses"
+          onSubmit={(event) => event.preventDefault()}
+          className="mt-7 border border-line bg-paper p-4 sm:p-5"
+        >
+          <div className="grid gap-4 md:grid-cols-12 md:items-end">
+            <div className="md:col-span-5">
+              <label htmlFor="course-search" className="label">Search</label>
+              <div className="relative mt-2">
+                <FaMagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" aria-hidden="true" />
+                <input
+                  id="course-search"
+                  type="search"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Title, topic, or category"
+                  className="input-field pl-9"
+                />
               </div>
-              
-              <div className={`space-y-4 ${showFilters ? 'block' : 'hidden lg:block'}`}>
-                {/* Category Filter */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Category</h4>
-                  <div className="space-y-1">
-                    {categories.map(category => (
-                      <label key={category.id} className="flex items-center">
-                        <input
-                          type="radio"
-                          name="category"
-                          value={category.id}
-                          checked={selectedCategory === category.id}
-                          onChange={(e) => setSelectedCategory(e.target.value)}
-                          className="w-3 h-3 text-blue-600 focus:ring-blue-500 border-gray-300"
-                        />
-                        <span className="ml-2 text-xs text-gray-700">{category.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
+            </div>
 
-                {/* Level Filter */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Level</h4>
-                  <div className="space-y-1">
-                    {levels.map(level => (
-                      <label key={level.id} className="flex items-center">
-                        <input
-                          type="radio"
-                          name="level"
-                          value={level.id}
-                          checked={selectedLevel === level.id}
-                          onChange={(e) => setSelectedLevel(e.target.value)}
-                          className="w-3 h-3 text-blue-600 focus:ring-blue-500 border-gray-300"
-                        />
-                        <span className="ml-2 text-xs text-gray-700">{level.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
+            <div className="md:col-span-2">
+              <label htmlFor="course-category" className="label">Category</label>
+              <select id="course-category" value={category} onChange={(event) => setCategory(event.target.value)} className="input-field mt-2">
+                {categories.map((item) => <option key={item} value={item}>{item === 'all' ? 'All categories' : item}</option>)}
+              </select>
+            </div>
+
+            <div className="md:col-span-2">
+              <label htmlFor="course-level" className="label">Level</label>
+              <select id="course-level" value={level} onChange={(event) => setLevel(event.target.value)} className="input-field mt-2">
+                {levels.map((item) => <option key={item} value={item}>{item === 'all' ? 'All levels' : item}</option>)}
+              </select>
+            </div>
+
+            <div className="md:col-span-3">
+              <label htmlFor="course-sort" className="label">Order</label>
+              <select id="course-sort" value={sort} onChange={(event) => setSort(event.target.value)} className="input-field mt-2">
+                {SORTS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
             </div>
           </div>
 
-          {/* Main Content */}
-          <div className="flex-1">
-            {/* Sort and Results Count */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-gray-600 text-sm">
-                Showing {sortedCourses.length} of {courses.length} courses
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-xs text-gray-600">Sort by:</span>
-                <div className="relative">
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="appearance-none bg-white border border-gray-200 rounded-lg px-3 py-1 pr-6 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
-                  >
-                    <option value="popular">Most Popular</option>
-                    <option value="rating">Highest Rated</option>
-                    <option value="newest">Newest</option>
-                    <option value="price-low">Price: Low to High</option>
-                    <option value="price-high">Price: High to Low</option>
-                  </select>
-                  <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
-                </div>
-              </div>
+          {hasFilters && (
+            <div className="mt-4 flex justify-end border-t border-line pt-4">
+              <button type="button" onClick={clear} className="inline-flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-cobalt">
+                <FaXmark className="h-3 w-3" aria-hidden="true" />
+                Clear filters
+              </button>
             </div>
+          )}
+        </form>
+      </section>
 
-            {/* Course Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {sortedCourses.map((course) => (
-                <div key={course.id} className="course-card group">
-                  <div className="relative">
-                    <img
-                      src={course.image}
-                      alt={course.title}
-                      className="w-full h-40 object-cover"
-                    />
-                    <div className="absolute top-3 left-3">
-                      <span className="bg-white/90 backdrop-blur-sm text-blue-600 text-xs font-medium px-2 py-1 rounded-full capitalize">
-                        {course.level}
-                      </span>
-                    </div>
-                    <div className="absolute top-3 right-3 flex space-x-1">
-                      {course.originalPrice && (
-                        <span className="bg-red-500 text-white text-xs font-medium px-2 py-1 rounded-full">
-                          {Math.round((1 - course.price / course.originalPrice) * 100)}% OFF
-                        </span>
-                      )}
-                      <button className="bg-white/90 backdrop-blur-sm p-1.5 rounded-full hover:bg-white transition-colors">
-                        <Heart className="w-3 h-3 text-gray-600" />
-                      </button>
-                    </div>
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                      <Link
-                        to={`/course/${course.id}`}
-                        className="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-50 transition-colors"
-                      >
-                        View Details
-                      </Link>
-                    </div>
-                  </div>
-                  
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-1">
-                        <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                        <span className="font-medium text-gray-900 text-xs">{course.rating}</span>
-                        <span className="text-gray-500 text-xs">({course.students})</span>
-                      </div>
-                      <div className="flex items-center space-x-1 text-xs text-gray-500">
-                        <Clock className="w-3 h-3" />
-                        <span>{course.duration}</span>
-                      </div>
-                    </div>
-                    
-                    <h3 className="font-semibold text-gray-900 mb-1 text-sm line-clamp-2">
-                      {course.title}
-                    </h3>
-                    <div className="text-xs text-gray-600 mb-2">{course.instructor}</div>
-                    <p className="text-xs text-gray-600 mb-3 line-clamp-2">{course.description}</p>
-                    
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg font-bold text-blue-600">${course.price}</span>
-                        {course.originalPrice && (
-                          <span className="text-sm text-gray-400 line-through">${course.originalPrice}</span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="space-y-1 mb-3">
-                      {course.features.slice(0, 2).map((feature, index) => (
-                        <div key={index} className="flex items-center text-xs text-gray-600">
-                          <div className="w-1 h-1 bg-blue-600 rounded-full mr-2"></div>
-                          {feature}
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => addToCart(course)}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-center py-2 px-3 rounded-lg transition-colors duration-200 font-medium text-xs flex items-center justify-center space-x-1"
-                      >
-                        <ShoppingCart className="w-3 h-3" />
-                        <span>Add to Cart</span>
-                      </button>
-                      <Link
-                        to={`/course/${course.id}`}
-                        className="px-3 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-xs font-medium"
-                      >
-                        Preview
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {sortedCourses.length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-gray-400 mb-4">
-                  <Search className="w-12 h-12 mx-auto" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No courses found</h3>
-                <p className="text-gray-600 text-sm">
-                  {searchTerm 
-                    ? `No courses match "${searchTerm}". Try adjusting your search or filter criteria.`
-                    : 'Try adjusting your search or filter criteria'
-                  }
-                </p>
-              </div>
-            )}
-          </div>
+      <section className="container-studio pb-16 lg:pb-24" aria-labelledby="course-results-title">
+        <h2 id="course-results-title" className="sr-only">Course results</h2>
+        <div className="flex items-center justify-between border-b border-line pb-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted" aria-live="polite">
+            {loading
+              ? 'Opening the catalogue'
+              : `${filtered.length} ${filtered.length === 1 ? 'route' : 'routes'}${hasFilters ? ' matching' : ''}`}
+          </p>
+          {!loading && courses.length > 0 && (
+            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+              {courses.length} total
+            </p>
+          )}
         </div>
-      </div>
+
+        {error ? (
+          <div className="mt-8 border border-line bg-paper p-10">
+            <p className="font-display text-3xl text-ink">The catalogue is unavailable.</p>
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">
+              The course request failed. This is a server problem, not an empty catalogue.
+            </p>
+            <button type="button" onClick={() => setReloadKey((key) => key + 1)} className="btn-outline mt-6">
+              Try again
+            </button>
+          </div>
+        ) : loading ? (
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="border border-line bg-paper">
+                <div className="aspect-[4/3] animate-pulse bg-clay" />
+                <div className="space-y-3 p-5">
+                  <div className="h-3 w-1/3 animate-pulse bg-clay" />
+                  <div className="h-6 w-2/3 animate-pulse bg-clay" />
+                  <div className="h-3 w-1/2 animate-pulse bg-clay" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="mt-8 border border-line bg-paper px-6 py-16 text-center">
+            <p className="eyebrow">Nothing matches</p>
+            <p className="mt-4 font-display text-3xl text-ink">No routes on this shelf.</p>
+            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted">
+              Try a different category or level, or clear the search.
+            </p>
+            <button type="button" onClick={clear} className="btn-outline mt-6">Clear filters</button>
+          </div>
+        ) : (
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((course, index) => (
+              <CourseCard key={course._id} course={course} priority={index < 3} />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   )
 }
-
-export default Courses

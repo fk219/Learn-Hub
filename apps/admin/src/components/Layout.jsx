@@ -1,146 +1,145 @@
-import React, { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { 
-  LayoutDashboard, 
-  BookOpen, 
-  Users, 
-  CreditCard, 
-  BarChart3, 
-  Settings, 
-  Menu, 
-  X,
-  Bell,
-  Search,
-  User
-} from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { BookOpen, CreditCard, LayoutDashboard, LogOut, Menu, Users, X, ArrowUpRight } from 'lucide-react'
+import { clearAdminAccessToken } from '../lib/apiClient'
 
-const Layout = ({ children }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+const navigation = [
+  { name: 'Overview', href: '/', icon: LayoutDashboard, end: true },
+  { name: 'Courses', href: '/courses', icon: BookOpen },
+  { name: 'Learners', href: '/learners', icon: Users },
+  { name: 'Orders', href: '/orders', icon: CreditCard }
+]
+
+const learnerSite = import.meta.env.VITE_WEB_URL || 'http://localhost:5173'
+
+export default function Layout({ children }) {
+  const [open, setOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
+  const admin = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('adminUser') || 'null')
+    } catch {
+      return null
+    }
+  })()
 
-  const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Courses', href: '/courses', icon: BookOpen },
-    { name: 'Users', href: '/users', icon: Users },
-    { name: 'Payments', href: '/payments', icon: CreditCard },
-    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-    { name: 'Settings', href: '/settings', icon: Settings },
-  ]
+  useEffect(() => {
+    setOpen(false)
+  }, [location.pathname])
+
+  const signOut = () => {
+    clearAdminAccessToken()
+    localStorage.removeItem('adminUser')
+    navigate('/')
+    window.location.reload()
+  }
+
+  const nav = (
+    <nav className="flex-1 space-y-1 px-2 py-4" aria-label="Admin">
+      {navigation.map((item) => {
+        const Icon = item.icon
+        return (
+          <NavLink
+            key={item.href}
+            to={item.href}
+            end={item.end}
+            onClick={() => setOpen(false)}
+            className={({ isActive }) =>
+              `flex min-h-11 items-center gap-3 border-l-2 px-3 transition-colors ${
+                isActive
+                  ? 'border-acid bg-chalk/10 text-chalk'
+                  : 'border-transparent text-chalk/45 hover:bg-chalk/5 hover:text-chalk'
+              }`
+            }
+          >
+            <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em]">{item.name}</span>
+          </NavLink>
+        )
+      })}
+      <a
+        href={learnerSite}
+        className="flex min-h-11 items-center gap-3 border-l-2 border-transparent px-3 text-chalk/45 transition-colors hover:bg-chalk/5 hover:text-chalk"
+      >
+        <ArrowUpRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span className="font-mono text-[10px] uppercase tracking-[0.14em]">Learner site</span>
+      </a>
+    </nav>
+  )
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile sidebar */}
-      <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
-        <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
-          <div className="flex h-14 items-center justify-between px-4 border-b border-gray-200">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">L</span>
-              </div>
-              <span className="text-lg font-bold text-gray-900">Admin</span>
-            </div>
-            <button onClick={() => setSidebarOpen(false)}>
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
-          </div>
-          <nav className="flex-1 px-4 py-4 space-y-1">
-            {navigation.map((item) => {
-              const isActive = location.pathname === item.href
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`sidebar-item ${isActive ? 'sidebar-item-active' : 'sidebar-item-inactive'}`}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <item.icon className="w-4 h-4 mr-3" />
-                  {item.name}
-                </Link>
-              )
-            })}
-          </nav>
+    <div className="flex min-h-screen bg-chalk">
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-chalk/10 bg-ink text-chalk lg:flex">
+        <Link to="/" className="flex h-20 items-center gap-3 border-b border-chalk/10 px-5" aria-label="LearnHub admin">
+          <span className="grid h-9 w-9 shrink-0 grid-cols-2 gap-0.5" aria-hidden="true">
+            <span className="col-span-1 row-span-2 bg-cobalt" />
+            <span className="bg-acid" />
+            <span className="border border-chalk" />
+          </span>
+          <span className="flex flex-col leading-none">
+            <span className="font-display text-xl font-semibold tracking-tight">LearnHub</span>
+            <span className="mt-1 font-mono text-[8px] uppercase tracking-[0.2em] text-chalk/40">Course ledger</span>
+          </span>
+        </Link>
+
+        <div className="border-b border-chalk/10 px-5 py-4">
+          <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-chalk/35">Signed in</p>
+          <p className="mt-1 truncate text-sm text-chalk/75">{admin?.name || admin?.email || 'Admin'}</p>
         </div>
-      </div>
 
-      {/* Desktop sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex flex-col flex-grow bg-white border-r border-gray-200">
-          <div className="flex h-14 items-center px-4 border-b border-gray-200">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">L</span>
-              </div>
-              <span className="text-lg font-bold text-gray-900">Admin Panel</span>
-            </div>
-          </div>
-          <nav className="flex-1 px-4 py-4 space-y-1">
-            {navigation.map((item) => {
-              const isActive = location.pathname === item.href
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`sidebar-item ${isActive ? 'sidebar-item-active' : 'sidebar-item-inactive'}`}
-                >
-                  <item.icon className="w-4 h-4 mr-3" />
-                  {item.name}
-                </Link>
-              )
-            })}
-          </nav>
+        {nav}
+
+        <div className="border-t border-chalk/10 p-2">
+          <button
+            type="button"
+            onClick={signOut}
+            className="flex min-h-11 w-full items-center gap-3 border-l-2 border-transparent px-3 text-chalk/50 transition-colors hover:bg-chalk/5 hover:text-acid"
+          >
+            <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em]">Sign out</span>
+          </button>
         </div>
-      </div>
+      </aside>
 
-      {/* Main content */}
-      <div className="lg:pl-64">
-        {/* Top bar */}
-        <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
-          <div className="flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 text-gray-500 hover:text-gray-700"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
+      <div className="min-w-0 flex-1">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-line bg-chalk px-5 lg:hidden">
+          <Link to="/" className="flex items-center gap-3">
+            <span className="grid h-8 w-8 grid-cols-2 gap-0.5" aria-hidden="true">
+              <span className="col-span-1 row-span-2 bg-cobalt" />
+              <span className="bg-acid" />
+              <span className="border border-ink" />
+            </span>
+            <span className="font-display text-lg font-semibold">LearnHub Admin</span>
+          </Link>
+          <button type="button" onClick={() => setOpen(true)} className="flex h-10 w-10 items-center justify-center" aria-label="Open admin menu">
+            <Menu className="h-5 w-5" />
+          </button>
+        </header>
 
-            <div className="flex items-center space-x-4">
-              {/* Search */}
-              <div className="relative hidden sm:block">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  className="pl-10 pr-4 py-1.5 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-64"
-                />
+        {open && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <div className="absolute inset-0 bg-ink/60" onClick={() => setOpen(false)} />
+            <div className="absolute inset-y-0 left-0 flex w-72 flex-col bg-ink text-chalk">
+              <div className="flex h-16 items-center justify-between border-b border-chalk/10 px-5">
+                <span className="font-display text-xl font-semibold">LearnHub Admin</span>
+                <button type="button" onClick={() => setOpen(false)} className="flex h-10 w-10 items-center justify-center" aria-label="Close admin menu">
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-
-              {/* Notifications */}
-              <button className="p-2 text-gray-500 hover:text-gray-700 relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  3
-                </span>
-              </button>
-
-              {/* Profile */}
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-white" />
-                </div>
-                <span className="text-sm font-medium text-gray-700 hidden sm:block">Admin</span>
+              {nav}
+              <div className="border-t border-chalk/10 p-3">
+                <button type="button" onClick={signOut} className="flex min-h-11 w-full items-center gap-3 px-3 text-chalk/60">
+                  <LogOut className="h-4 w-4" />
+                  <span className="font-mono text-[10px] uppercase tracking-[0.14em]">Sign out</span>
+                </button>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Page content */}
-        <main className="p-4 sm:p-6 lg:p-8">
-          {children}
-        </main>
+        <main>{children}</main>
       </div>
     </div>
   )
 }
-
-export default Layout

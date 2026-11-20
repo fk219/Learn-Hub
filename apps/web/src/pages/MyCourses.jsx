@@ -1,236 +1,200 @@
-import React, { useState, useEffect } from 'react'
+import { useContext, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Play, Clock, CheckCircle, BookOpen, Award, BarChart3 } from 'lucide-react'
+import { FaArrowRight, FaCircleCheck, FaPlay } from 'react-icons/fa6'
 import { apiFetch } from '../lib/apiClient'
+import { AuthContext } from '../contexts/AuthContext'
+import { courseProgress } from '../lib/course'
 
-const MyCourses = () => {
-  const [enrolledCourses, setEnrolledCourses] = useState([])
-  const [activeTab, setActiveTab] = useState('all')
+export default function MyCourses() {
+  const { user, loading: authLoading } = useContext(AuthContext)
+  const [enrollments, setEnrollments] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
+    if (!user) {
+      setEnrollments([])
+      setLoading(false)
+      return
+    }
+
+    let active = true
+    setLoading(true)
+    setError('')
     apiFetch('/api/me/enrollments')
-      .then((r) => {
-        const mapped = (r.items || []).map((i) => ({
-          id: i.course?._id || i.course?.id || i.id,
-          title: i.course?.title || 'Course',
-          instructor: 'LearnHub',
-          image: i.course?.imageUrl || '',
-          progress: 0,
-          totalLessons: 0,
-          completedLessons: 0,
-          duration: 'Self-paced',
-          enrolledDate: i.createdAt ? String(i.createdAt).slice(0, 10) : '',
-          status: 'in-progress',
-        }))
-        setEnrolledCourses(mapped)
+      .then((result) => {
+        if (active) setEnrollments(result.items || [])
       })
       .catch(() => {
-        setEnrolledCourses([])
+        if (active) setError('Your learning record could not be loaded.')
       })
-  }, [])
+      .finally(() => {
+        if (active) setLoading(false)
+      })
 
-  const filteredCourses = enrolledCourses.filter(course => {
-    if (activeTab === 'all') return true
-    if (activeTab === 'in-progress') return course.status === 'in-progress'
-    if (activeTab === 'completed') return course.status === 'completed'
-    return true
-  })
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800'
-      case 'in-progress':
-        return 'bg-blue-100 text-blue-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
+    return () => {
+      active = false
     }
+  }, [user, reloadKey])
+
+  const rows = useMemo(
+    () =>
+      enrollments.map((item) => {
+        const course = item.course
+        const progress = courseProgress(course, item.completedLessons || [])
+        return { enrollment: item, course, progress }
+      }),
+    [enrollments]
+  )
+
+  const totalLessons = rows.reduce((sum, row) => sum + row.progress.total, 0)
+  const completedLessons = rows.reduce((sum, row) => sum + row.progress.completed, 0)
+  const overall = totalLessons ? Math.round((completedLessons / totalLessons) * 100) : 0
+
+  if (authLoading) {
+    return (
+      <div className="container-studio py-16">
+        <div className="h-4 w-28 animate-pulse bg-clay" />
+        <div className="mt-6 h-14 w-2/3 animate-pulse bg-clay" />
+      </div>
+    )
   }
 
-  const tabs = [
-    { id: 'all', name: 'All Courses', count: enrolledCourses.length },
-    { id: 'in-progress', name: 'In Progress', count: enrolledCourses.filter(c => c.status === 'in-progress').length },
-    { id: 'completed', name: 'Completed', count: enrolledCourses.filter(c => c.status === 'completed').length }
-  ]
+  if (!user) {
+    return (
+      <div className="bg-chalk">
+        <div className="container-studio flex min-h-[60vh] items-center py-16">
+          <div className="max-w-xl">
+            <p className="eyebrow">My learning / Account required</p>
+            <h1 className="mt-4 font-display text-[clamp(2.8rem,5vw,4.8rem)] font-semibold leading-[0.92] tracking-[-0.05em] text-ink">
+              Your route lives with your account.
+            </h1>
+            <p className="mt-5 text-base leading-relaxed text-muted">
+              Sign in to keep lesson progress, return to the next piece of work, and see the routes
+              you have started.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link to="/signin" className="btn-primary">Sign in</Link>
+              <Link to="/signup" className="btn-outline">Create an account</Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="pt-14 min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">My Learning</h1>
-          <p className="text-gray-600 text-sm">Track your progress and continue learning</p>
+    <div className="bg-chalk">
+      <section className="container-studio pb-14 pt-12 lg:pt-16">
+        <div className="flex flex-col justify-between gap-8 border-b border-line pb-9 lg:flex-row lg:items-end">
+          <div>
+            <p className="eyebrow">My learning / {user.name || user.email}</p>
+            <h1 className="mt-4 font-display text-[clamp(3rem,5.5vw,5.2rem)] font-semibold leading-[0.9] tracking-[-0.05em] text-ink">
+              My <span className="italic text-cobalt">route.</span>
+            </h1>
+            <p className="mt-4 max-w-lg text-base leading-relaxed text-muted">
+              The courses you have started, the next lesson on each, and the work already marked
+              complete.
+            </p>
+          </div>
+          <Link to="/courses" className="btn-primary">
+            Find another route
+            <FaArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+          </Link>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="flex items-center">
-              <BookOpen className="w-8 h-8 text-blue-600 mr-3" />
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{enrolledCourses.length}</p>
-                <p className="text-xs text-gray-600">Total Courses</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="flex items-center">
-              <BarChart3 className="w-8 h-8 text-green-600 mr-3" />
-              <div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {Math.round(enrolledCourses.reduce((acc, course) => acc + course.progress, 0) / enrolledCourses.length) || 0}%
-                </p>
-                <p className="text-xs text-gray-600">Avg Progress</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="flex items-center">
-              <CheckCircle className="w-8 h-8 text-purple-600 mr-3" />
-              <div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {enrolledCourses.filter(c => c.status === 'completed').length}
-                </p>
-                <p className="text-xs text-gray-600">Completed</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="flex items-center">
-              <Award className="w-8 h-8 text-yellow-600 mr-3" />
-              <div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {enrolledCourses.filter(c => c.certificateUrl).length}
-                </p>
-                <p className="text-xs text-gray-600">Certificates</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="border-b border-gray-200 mb-6">
-          <nav className="flex space-x-8">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
-                  activeTab === tab.id
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                {tab.name} ({tab.count})
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        {/* Course Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCourses.map((course) => (
-            <div key={course.id} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-              <div className="relative">
-                <img
-                  src={course.image}
-                  alt={course.title}
-                  className="w-full h-40 object-cover"
-                />
-                <div className="absolute top-3 right-3">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(course.status)}`}>
-                    {course.status === 'in-progress' ? 'In Progress' : 'Completed'}
-                  </span>
-                </div>
-                {course.status === 'in-progress' && (
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                    <Link
-                      to={`/course/${course.id}/learn`}
-                      className="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-50 transition-colors flex items-center space-x-2"
-                    >
-                      <Play className="w-4 h-4" />
-                      <span>Continue</span>
-                    </Link>
-                  </div>
-                )}
-              </div>
-              
-              <div className="p-4">
-                <h3 className="font-semibold text-gray-900 mb-1 text-sm">{course.title}</h3>
-                <p className="text-xs text-gray-600 mb-3">By {course.instructor}</p>
-                
-                {/* Progress Bar */}
-                <div className="mb-3">
-                  <div className="flex justify-between text-xs text-gray-600 mb-1">
-                    <span>{course.progress}% complete</span>
-                    <span>{course.completedLessons}/{course.totalLessons} lessons</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${course.progress}%` }}
-                    ></div>
-                  </div>
-                </div>
-                
-                {course.status === 'in-progress' && course.lastWatched && (
-                  <p className="text-xs text-gray-500 mb-3">
-                    Last watched: {course.lastWatched}
-                  </p>
-                )}
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-1 text-xs text-gray-500">
-                    <Clock className="w-3 h-3" />
-                    <span>{course.duration}</span>
-                  </div>
-                  
-                  <div className="flex space-x-2">
-                    {course.status === 'completed' && course.certificateUrl && (
-                      <a
-                        href={course.certificateUrl}
-                        className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        Certificate
-                      </a>
-                    )}
-                    <Link
-                      to={`/course/${course.id}`}
-                      className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                      View Course
-                    </Link>
-                  </div>
-                </div>
-              </div>
+        <dl className="grid grid-cols-3 border-b border-line">
+          {[
+            { label: 'Routes', value: rows.length },
+            { label: 'Lessons done', value: completedLessons },
+            { label: 'Overall', value: `${overall}%` }
+          ].map((stat) => (
+            <div key={stat.label} className="border-b border-line py-5 pr-4 sm:border-b-0 sm:border-r sm:px-5 sm:first:pl-0 sm:last:border-r-0">
+              <dt className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted">{stat.label}</dt>
+              <dd className="mt-1.5 font-display text-3xl font-semibold tabular-nums text-ink">{stat.value}</dd>
             </div>
           ))}
-        </div>
+        </dl>
+      </section>
 
-        {filteredCourses.length === 0 && (
-          <div className="text-center py-12">
-            <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No courses found</h3>
-            <p className="text-gray-600 mb-6 text-sm">
-              {activeTab === 'all' 
-                ? "You haven't enrolled in any courses yet."
-                : `No ${activeTab.replace('-', ' ')} courses found.`
-              }
+      <section className="container-studio pb-16 lg:pb-24">
+        {error ? (
+          <div className="border border-line bg-paper p-8">
+            <p className="font-display text-2xl text-ink">Your learning record is unavailable.</p>
+            <p className="mt-2 text-sm text-muted">{error}</p>
+            <button type="button" onClick={() => setReloadKey((key) => key + 1)} className="btn-outline mt-5">Try again</button>
+          </div>
+        ) : loading ? (
+          <div className="space-y-4">
+            {Array.from({ length: 2 }).map((_, index) => (
+              <div key={index} className="h-48 animate-pulse border border-line bg-paper" />
+            ))}
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="border border-line bg-paper px-6 py-16 text-center">
+            <p className="eyebrow">No routes yet</p>
+            <p className="mt-4 font-display text-3xl text-ink">Choose a room to start in.</p>
+            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted">
+              Open a course, read its route, and enroll. Lesson progress will appear here.
             </p>
-            <Link
-              to="/courses"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors text-sm"
-            >
-              Browse Courses
-            </Link>
+            <Link to="/courses" className="btn-primary mt-6">Browse the catalogue</Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {rows.map(({ enrollment, course, progress }) => (
+              <article key={enrollment.id} className="grid gap-5 border border-line bg-paper p-4 sm:grid-cols-[10rem_1fr_auto] sm:items-center sm:p-5">
+                <Link to={`/course/${course._id}`} className="block aspect-[4/3] overflow-hidden border border-line bg-clay">
+                  <img src={course.imageUrl} alt="" className="h-full w-full object-cover" />
+                </Link>
+
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="badge">{course.category}</span>
+                    <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted">
+                      {progress.completed} / {progress.total} lessons
+                    </span>
+                  </div>
+                  <h2 className="mt-2 font-display text-2xl font-semibold leading-tight tracking-[-0.03em] text-ink">
+                    <Link to={`/course/${course._id}`} className="hover:text-cobalt">{course.title}</Link>
+                  </h2>
+                  <div className="mt-3 max-w-md">
+                    <div className="progress-track">
+                      <div className="progress-fill" style={{ width: `${progress.percent}%` }} />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between font-mono text-[9px] uppercase tracking-[0.12em] text-muted">
+                      <span>{progress.percent}% complete</span>
+                      <span>{progress.total - progress.completed} left</span>
+                    </div>
+                  </div>
+                  {progress.nextLesson && (
+                    <p className="mt-3 flex items-center gap-2 text-xs text-muted">
+                      <FaPlay className="h-2.5 w-2.5 text-cobalt" aria-hidden="true" />
+                      Next: {progress.nextLesson.title}
+                    </p>
+                  )}
+                  {!progress.nextLesson && (
+                    <p className="mt-3 flex items-center gap-2 text-xs text-cobalt">
+                      <FaCircleCheck className="h-3 w-3" aria-hidden="true" />
+                      Route complete.
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex sm:justify-end">
+                  <Link
+                    to={progress.nextLesson ? `/course/${course._id}?lesson=${progress.nextLesson.id}` : `/course/${course._id}`}
+                    className="btn-primary w-full sm:w-auto"
+                  >
+                    {progress.nextLesson ? 'Continue' : 'Review route'}
+                    <FaArrowRight className="h-3 w-3" aria-hidden="true" />
+                  </Link>
+                </div>
+              </article>
+            ))}
           </div>
         )}
-      </div>
+      </section>
     </div>
   )
 }
-
-export default MyCourses

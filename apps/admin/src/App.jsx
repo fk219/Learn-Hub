@@ -3,10 +3,8 @@ import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Courses from './pages/Courses'
-import Users from './pages/Users'
-import Payments from './pages/Payments'
-import Analytics from './pages/Analytics'
-import Settings from './pages/Settings'
+import Learners from './pages/Learners'
+import Orders from './pages/Orders'
 import Login from './pages/Login'
 import { apiFetch, clearAdminAccessToken, getAdminAccessToken } from './lib/apiClient'
 
@@ -23,8 +21,8 @@ function App() {
     }
 
     apiFetch('/api/auth/me')
-      .then((r) => {
-        if (r.user?.role === 'admin') {
+      .then((result) => {
+        if (result.user?.role === 'admin') {
           setIsAuthed(true)
         } else {
           clearAdminAccessToken()
@@ -35,12 +33,20 @@ function App() {
         clearAdminAccessToken()
         setIsAuthed(false)
       })
-      .finally(() => {
-        setIsReady(true)
-      })
+      .finally(() => setIsReady(true))
   }, [])
 
-  if (!isReady) return null
+  if (!isReady) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-chalk">
+        <div className="flex items-center gap-3">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-cobalt" aria-hidden="true" />
+          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">Opening the ledger</span>
+        </div>
+      </div>
+    )
+  }
+
   if (!isAuthed) return <Login onSuccess={() => window.location.reload()} />
 
   return (
@@ -48,10 +54,8 @@ function App() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/courses" element={<Courses />} />
-        <Route path="/users" element={<Users />} />
-        <Route path="/payments" element={<Payments />} />
-        <Route path="/analytics" element={<Analytics />} />
-        <Route path="/settings" element={<Settings />} />
+        <Route path="/learners" element={<Learners />} />
+        <Route path="/orders" element={<Orders />} />
       </Routes>
     </Layout>
   )

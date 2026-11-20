@@ -1,58 +1,27 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        border: '#e5e7eb',
-        background: '#ffffff',
-        foreground: '#1f2937',
-        primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-        },
-        coursera: {
-          blue: '#0056d3',
-          darkblue: '#003d99',
-          lightblue: '#4285f4',
-          gray: '#666666',
-          lightgray: '#f7f7f7',
-        }
+        chalk: '#F1EFE8',
+        paper: '#FAF9F4',
+        ink: '#111318',
+        cobalt: '#2743D6',
+        acid: '#C6F24E',
+        clay: '#E7E0D2',
+        muted: 'rgba(17,19,24,0.62)',
+        line: 'rgba(17,19,24,0.16)'
       },
       fontFamily: {
-        'sans': ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['"Space Grotesk"', 'Inter', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace']
       },
-      animation: {
-        'fade-in': 'fadeIn 0.5s ease-in-out',
-        'slide-up': 'slideUp 0.6s ease-out',
-        'bounce-gentle': 'bounceGentle 2s infinite',
-      },
-      keyframes: {
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-        slideUp: {
-          '0%': { transform: 'translateY(20px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
-        },
-        bounceGentle: {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-5px)' },
-        }
+      maxWidth: {
+        '8xl': '88rem'
       }
-    },
+    }
   },
-  plugins: [],
+  plugins: []
 }

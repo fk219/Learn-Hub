@@ -1,169 +1,166 @@
-import React from 'react'
-import { Users, BookOpen, DollarSign, TrendingUp, Eye, Plus } from 'lucide-react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
+import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowRight, BookOpen, CreditCard, Users } from 'lucide-react'
+import { apiFetch } from '../lib/apiClient'
 
-const Dashboard = () => {
-  const stats = [
-    { name: 'Total Users', value: '12,543', change: '+12%', icon: Users, color: 'blue' },
-    { name: 'Total Courses', value: '247', change: '+8%', icon: BookOpen, color: 'green' },
-    { name: 'Revenue', value: '$89,432', change: '+23%', icon: DollarSign, color: 'purple' },
-    { name: 'Enrollments', value: '45,678', change: '+15%', icon: TrendingUp, color: 'orange' }
-  ]
+function formatMoney(cents) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format((cents || 0) / 100)
+}
 
-  const revenueData = [
-    { month: 'Jan', revenue: 4000 },
-    { month: 'Feb', revenue: 3000 },
-    { month: 'Mar', revenue: 5000 },
-    { month: 'Apr', revenue: 4500 },
-    { month: 'May', revenue: 6000 },
-    { month: 'Jun', revenue: 5500 },
-  ]
+export default function Dashboard() {
+  const [stats, setStats] = useState(null)
+  const [courses, setCourses] = useState([])
+  const [enrollments, setEnrollments] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  const enrollmentData = [
-    { month: 'Jan', enrollments: 400 },
-    { month: 'Feb', enrollments: 300 },
-    { month: 'Mar', enrollments: 500 },
-    { month: 'Apr', enrollments: 450 },
-    { month: 'May', enrollments: 600 },
-    { month: 'Jun', enrollments: 550 },
-  ]
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const [statsResult, coursesResult, enrollmentsResult] = await Promise.all([
+        apiFetch('/api/admin/stats'),
+        apiFetch('/api/admin/courses'),
+        apiFetch('/api/admin/enrollments')
+      ])
+      setStats(statsResult)
+      setCourses(coursesResult.items || [])
+      setEnrollments(enrollmentsResult.items || [])
+    } catch {
+      setError('The ledger could not be loaded.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
-  const recentCourses = [
-    { id: 1, title: 'Advanced React Development', instructor: 'John Smith', students: 1250, status: 'published' },
-    { id: 2, title: 'Machine Learning Basics', instructor: 'Dr. Sarah Johnson', students: 890, status: 'published' },
-    { id: 3, title: 'Digital Marketing Strategy', instructor: 'Mike Wilson', students: 567, status: 'draft' },
-  ]
+  useEffect(() => {
+    void load()
+  }, [load])
 
-  const recentUsers = [
-    { id: 1, name: 'Alice Johnson', email: 'alice@example.com', joinDate: '2024-01-15', courses: 3 },
-    { id: 2, name: 'Bob Smith', email: 'bob@example.com', joinDate: '2024-01-14', courses: 1 },
-    { id: 3, name: 'Carol Davis', email: 'carol@example.com', joinDate: '2024-01-13', courses: 5 },
-  ]
+  const enrollmentCounts = enrollments.reduce((counts, enrollment) => {
+    const title = enrollment.courseId?.title || 'Unknown course'
+    counts[title] = (counts[title] || 0) + 1
+    return counts
+  }, {})
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="admin-page">
+      <header className="flex flex-col justify-between gap-6 border-b border-line pb-8 lg:flex-row lg:items-end">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 text-sm">Welcome back! Here's what's happening with your platform.</p>
+          <p className="eyebrow">Course ledger / Overview</p>
+          <h1 className="admin-title mt-4 max-w-[14ch]">
+            The ledger, <span className="bg-acid px-1">open.</span>
+          </h1>
+          <p className="mt-4 max-w-lg text-sm leading-relaxed text-muted">
+            Real catalogue, learner, and enrollment records from the same API the learner site uses.
+          </p>
         </div>
-        <button className="btn-primary flex items-center space-x-2">
-          <Plus className="w-4 h-4" />
-          <span>Add Course</span>
-        </button>
-      </div>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/courses" className="btn-primary">
+            <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+            Manage courses
+          </Link>
+          <Link to="/learners" className="btn-outline">
+            View learners
+          </Link>
+        </div>
+      </header>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, index) => (
-          <div key={index} className="card">
-            <div className="flex items-center justify-between">
+      {error ? (
+        <div className="mt-8 surface p-8">
+          <p className="font-display text-2xl text-ink">The ledger is unavailable.</p>
+          <p className="mt-2 text-sm text-muted">{error}</p>
+          <button type="button" onClick={() => void load()} className="btn-outline mt-5">Try again</button>
+        </div>
+      ) : loading ? (
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-28 animate-pulse border border-line bg-paper" />
+          ))}
+        </div>
+      ) : (
+        <>
+          <dl className="grid grid-cols-2 border-b border-line xl:grid-cols-4">
+            {[
+              { label: 'Courses', value: stats?.courses || 0, note: `${stats?.publishedCourses || 0} published` },
+              { label: 'Learners', value: stats?.users || 0, note: 'all accounts' },
+              { label: 'Enrollments', value: stats?.enrollments || 0, note: 'active routes' },
+              { label: 'Revenue', value: formatMoney(stats?.revenueCents), note: `${stats?.paidOrders || 0} paid orders` }
+            ].map((stat, index) => (
+              <div
+                key={stat.label}
+                className={`border-b border-line py-5 pr-4 even:border-l even:pl-4 xl:border-b-0 xl:border-r xl:px-6 xl:first:pl-0 xl:last:border-r-0 xl:even:border-l-0`}
+              >
+                <dt className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted">{stat.label}</dt>
+                <dd className="mt-2 font-display text-3xl font-semibold tabular-nums text-ink">{stat.value}</dd>
+                <dd className="mt-1.5 font-mono text-[8px] uppercase tracking-[0.12em] text-muted">{stat.note}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <div className="mt-10 grid gap-10 xl:grid-cols-12">
+            <section className="xl:col-span-7" aria-labelledby="catalogue-title">
+              <div className="flex items-end justify-between border-b border-line pb-3">
+                <h2 id="catalogue-title" className="font-display text-2xl font-semibold">Catalogue</h2>
+                <Link to="/courses" className="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.12em] text-muted hover:text-ink">
+                  All courses <ArrowRight className="h-2.5 w-2.5" />
+                </Link>
+              </div>
               <div>
-                <p className="text-xs font-medium text-gray-600">{stat.name}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
-                <p className={`text-xs mt-1 ${stat.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
-                  {stat.change} from last month
+                {courses.slice(0, 6).map((course) => {
+                  const enrollmentCount = enrollmentCounts[course.title] || 0
+                  const lessonCount = (course.modules || []).reduce((sum, module) => sum + (module.lessons?.length || 0), 0)
+                  return (
+                    <div key={course._id} className="grid gap-3 border-b border-line py-4 sm:grid-cols-[1fr_auto] sm:items-center">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={course.published ? 'badge-acid' : 'badge'}>{course.published ? 'Published' : 'Draft'}</span>
+                          <span className="font-mono text-[8px] uppercase tracking-[0.12em] text-muted">{course.category}</span>
+                        </div>
+                        <p className="mt-1.5 truncate font-display text-lg font-semibold leading-tight">{course.title}</p>
+                        <p className="mt-0.5 font-mono text-[8px] uppercase tracking-[0.12em] text-muted">
+                          {lessonCount} lessons · {enrollmentCount} enrolled
+                        </p>
+                      </div>
+                      <Link to="/courses" className="font-mono text-[9px] uppercase tracking-[0.12em] text-cobalt hover:text-ink">Manage</Link>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+
+            <section className="xl:col-span-4 xl:col-start-9" aria-labelledby="enrollments-title">
+              <div className="flex items-end justify-between border-b border-line pb-3">
+                <h2 id="enrollments-title" className="font-display text-2xl font-semibold">Recent enrollments</h2>
+                <Users className="h-4 w-4 text-muted" aria-hidden="true" />
+              </div>
+              {enrollments.length === 0 ? (
+                <p className="border-b border-line py-8 text-sm text-muted">No enrollment records yet.</p>
+              ) : (
+                <div>
+                  {enrollments.slice(0, 6).map((enrollment) => (
+                    <div key={enrollment._id} className="border-b border-line py-4">
+                      <p className="text-sm text-ink">{enrollment.userId?.name || enrollment.userId?.email || 'Learner'}</p>
+                      <p className="mt-0.5 truncate font-mono text-[8px] uppercase tracking-[0.1em] text-muted">
+                        {enrollment.courseId?.title || 'Course'} · {(enrollment.completedLessons || []).length} done
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="mt-5 border border-line p-4">
+                <p className="label">Orders</p>
+                <p className="mt-2 text-xs leading-relaxed text-muted">
+                  {stats?.orders ? `${stats.orders} order records.` : 'No orders. Learner enrollment is a demo action and does not create a payment.'}
                 </p>
+                <Link to="/orders" className="mt-3 inline-flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-cobalt">
+                  Order records <CreditCard className="h-2.5 w-2.5" />
+                </Link>
               </div>
-              <div className={`p-2 rounded-lg bg-${stat.color}-100`}>
-                <stat.icon className={`w-5 h-5 text-${stat.color}-600`} />
-              </div>
-            </div>
+            </section>
           </div>
-        ))}
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={revenueData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Enrollments</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={enrollmentData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="enrollments" fill="#10b981" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Courses */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Recent Courses</h3>
-            <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">View All</button>
-          </div>
-          <div className="space-y-3">
-            {recentCourses.map((course) => (
-              <div key={course.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg">
-                <div className="flex-1">
-                  <h4 className="font-medium text-gray-900 text-sm">{course.title}</h4>
-                  <p className="text-xs text-gray-600">by {course.instructor}</p>
-                  <p className="text-xs text-gray-500">{course.students} students</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    course.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {course.status}
-                  </span>
-                  <button className="text-gray-400 hover:text-gray-600">
-                    <Eye className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent Users */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Recent Users</h3>
-            <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">View All</button>
-          </div>
-          <div className="space-y-3">
-            {recentUsers.map((user) => (
-              <div key={user.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium text-xs">
-                    {user.name.charAt(0)}
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-gray-900 text-sm">{user.name}</h4>
-                    <p className="text-xs text-gray-600">{user.email}</p>
-                    <p className="text-xs text-gray-500">Joined {user.joinDate}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">{user.courses}</p>
-                  <p className="text-xs text-gray-500">courses</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   )
 }
-
-export default Dashboard

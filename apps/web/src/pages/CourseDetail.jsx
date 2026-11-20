@@ -1,564 +1,449 @@
-import React, { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { gsap } from 'gsap'
-import { Play, Star, Clock, Users, Globe, Award, BookOpen, CheckCircle, Download, Share2, Heart, ChevronRight, Calendar, Video, FileText, Pizza as Quiz } from 'lucide-react'
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import {
+  FaArrowLeft,
+  FaArrowRight,
+  FaCheck,
+  FaCircleCheck,
+  FaCirclePlay,
+  FaPenNib,
+  FaRoute
+} from 'react-icons/fa6'
 import { apiFetch } from '../lib/apiClient'
+import { AuthContext } from '../contexts/AuthContext'
+import { courseProgress, flattenLessons, formatPrice } from '../lib/course'
 
-const CourseDetail = () => {
+const KIND_META = {
+  lesson: { label: 'Lesson', icon: FaCirclePlay },
+  lab: { label: 'Lab', icon: FaPenNib },
+  critique: { label: 'Critique', icon: FaCircleCheck },
+  project: { label: 'Project', icon: FaRoute }
+}
+
+export default function CourseDetail() {
   const { id } = useParams()
-  const [activeTab, setActiveTab] = useState('overview')
-  const [isEnrolled, setIsEnrolled] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const { user, loading: authLoading } = useContext(AuthContext)
+  const navigate = useNavigate()
+  const location = useLocation()
+
   const [course, setCourse] = useState(null)
+  const [enrollment, setEnrollment] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [selectedLessonId, setSelectedLessonId] = useState(searchParams.get('lesson') || '')
+  const [selectionTouched, setSelectionTouched] = useState(Boolean(searchParams.get('lesson')))
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+  const [actionError, setActionError] = useState('')
 
-  useEffect(() => {
-    gsap.fromTo('.course-hero',
-      { y: 30, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.8, ease: 'power2.out' }
-    )
-    
-    gsap.fromTo('.course-content',
-      { y: 20, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.6, delay: 0.2, ease: 'power2.out' }
-    )
-  }, [])
+  const loadCourse = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const courseResult = await apiFetch(`/api/courses/${id}`)
+      setCourse(courseResult.course)
 
-  const fallbackCourse = {
-    id,
-    title: 'Machine Learning Specialization',
-    instructor: 'Andrew Ng',
-    instructorTitle: 'Co-founder of Coursera, Adjunct Professor at Stanford',
-    instructorImage: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=150',
-    university: 'Stanford University',
-    rating: 4.9,
-    reviewCount: '150K',
-    students: '2.1M',
-    duration: '3 months',
-    level: 'Beginner',
-    language: 'English',
-    subtitles: ['English', 'Spanish', 'French'],
-    image: 'https://images.pexels.com/photos/8386440/pexels-photo-8386440.jpeg?auto=compress&cs=tinysrgb&w=800',
-    price: '$49',
-    originalPrice: '$79',
-    description: 'Master the fundamentals of machine learning and build your first ML models with hands-on projects.',
-    longDescription: `This comprehensive Machine Learning Specialization will teach you the fundamentals of machine learning and how to use these techniques to build real-world AI applications. You'll learn about supervised learning, unsupervised learning, and best practices used in Silicon Valley for artificial intelligence and machine learning innovation.
-
-By the end of this specialization, you will have mastered key concepts and gained the practical know-how to quickly and powerfully apply machine learning to challenging real-world problems.`,
-    skills: [
-      'Machine Learning Algorithms',
-      'Python Programming',
-      'Data Analysis',
-      'Neural Networks',
-      'Deep Learning',
-      'TensorFlow'
-    ],
-    whatYouLearn: [
-      'Build machine learning models in Python using popular libraries NumPy and scikit-learn',
-      'Build and train supervised machine learning models for prediction and binary classification tasks',
-      'Build and train a neural network with TensorFlow to perform multi-class classification',
-      'Apply best practices for machine learning development so that your models generalize to data and tasks in the real world',
-      'Build and use decision trees and tree ensemble methods, including random forests and boosted trees',
-      'Use unsupervised learning techniques for unsupervised learning including clustering and anomaly detection'
-    ],
-    syllabus: [
-      {
-        week: 1,
-        title: 'Introduction to Machine Learning',
-        duration: '6 hours',
-        lessons: [
-          { type: 'video', title: 'What is Machine Learning?', duration: '15 min' },
-          { type: 'video', title: 'Supervised vs Unsupervised Learning', duration: '12 min' },
-          { type: 'reading', title: 'Course Resources', duration: '10 min' },
-          { type: 'quiz', title: 'Week 1 Quiz', duration: '30 min' }
-        ]
-      },
-      {
-        week: 2,
-        title: 'Linear Regression',
-        duration: '8 hours',
-        lessons: [
-          { type: 'video', title: 'Linear Regression Model', duration: '20 min' },
-          { type: 'video', title: 'Cost Function', duration: '18 min' },
-          { type: 'video', title: 'Gradient Descent', duration: '25 min' },
-          { type: 'assignment', title: 'Programming Assignment', duration: '2 hours' }
-        ]
-      },
-      {
-        week: 3,
-        title: 'Classification',
-        duration: '10 hours',
-        lessons: [
-          { type: 'video', title: 'Logistic Regression', duration: '22 min' },
-          { type: 'video', title: 'Decision Boundary', duration: '15 min' },
-          { type: 'video', title: 'Regularization', duration: '20 min' },
-          { type: 'assignment', title: 'Classification Project', duration: '3 hours' }
-        ]
+      if (user) {
+        try {
+          const enrollmentResult = await apiFetch('/api/me/enrollments')
+          const current = (enrollmentResult.items || []).find(
+            (item) => String(item.course?._id || item.course?.id) === String(id)
+          )
+          setEnrollment(current || null)
+        } catch {
+          setEnrollment(null)
+        }
+      } else {
+        setEnrollment(null)
       }
-    ],
-    prerequisites: [
-      'Basic programming knowledge (Python preferred)',
-      'High school level mathematics',
-      'No prior machine learning experience required'
-    ],
-    certificate: {
-      available: true,
-      shareable: true,
-      addToLinkedIn: true
+    } catch {
+      setError('This course could not be loaded.')
+    } finally {
+      setLoading(false)
     }
-  }
+  }, [id, user])
 
   useEffect(() => {
-    apiFetch(`/api/courses/${id}`)
-      .then((r) => {
-        const c = r.course
-        setCourse((prev) => ({
-          ...(prev || fallbackCourse),
-          id: c._id,
-          title: c.title,
-          description: c.description,
-          image: c.imageUrl,
-          category: c.category,
-          level: c.level,
-          price: `$${Math.round((c.priceCents || 0) / 100)}`,
-          originalPrice: null,
-          createdAt: c.createdAt,
-        }))
+    void loadCourse()
+  }, [loadCourse])
+
+  const progress = useMemo(
+    () => courseProgress(course, enrollment?.completedLessons || []),
+    [course, enrollment]
+  )
+
+  useEffect(() => {
+    if (!course) return
+    if (selectionTouched && progress.lessons.some((lesson) => lesson.id === selectedLessonId)) return
+    const next = progress.nextLesson || progress.lessons[0]
+    if (next && next.id !== selectedLessonId) setSelectedLessonId(next.id)
+  }, [course, progress.lessons, progress.nextLesson, selectedLessonId, selectionTouched])
+
+  const selectedLesson = progress.lessons.find((lesson) => lesson.id === selectedLessonId) || progress.lessons[0]
+  const selectedIndex = progress.lessons.findIndex((lesson) => lesson.id === selectedLesson?.id)
+  const selectedMeta = KIND_META[selectedLesson?.kind] || KIND_META.lesson
+  const SelectedIcon = selectedMeta.icon
+
+  const selectLesson = (lessonId) => {
+    setSelectionTouched(true)
+    setSelectedLessonId(lessonId)
+    setSearchParams({ lesson: lessonId }, { replace: true })
+    setMessage('')
+    setActionError('')
+  }
+
+  const requireSignIn = () => {
+    navigate('/signin', { state: { from: location } })
+  }
+
+  const enroll = async () => {
+    if (!user) {
+      requireSignIn()
+      return null
+    }
+    setSaving(true)
+    setActionError('')
+    setMessage('')
+    try {
+      const result = await apiFetch('/api/me/enrollments', {
+        method: 'POST',
+        body: JSON.stringify({ courseId: course._id })
       })
-      .catch(() => {
-        setCourse(fallbackCourse)
-      })
-  }, [id])
-
-  const displayCourse = course || fallbackCourse
-
-  const tabs = [
-    { id: 'overview', name: 'Overview' },
-    { id: 'syllabus', name: 'Syllabus' },
-    { id: 'instructor', name: 'Instructor' },
-    { id: 'reviews', name: 'Reviews' }
-  ]
-
-  const getIconForLessonType = (type) => {
-    switch (type) {
-      case 'video': return <Video className="w-4 h-4" />
-      case 'reading': return <FileText className="w-4 h-4" />
-      case 'quiz': return <Quiz className="w-4 h-4" />
-      case 'assignment': return <BookOpen className="w-4 h-4" />
-      default: return <FileText className="w-4 h-4" />
+      setEnrollment(result.enrollment)
+      setMessage('You are on the route.')
+      return result.enrollment
+    } catch {
+      setActionError('Enrollment failed. Please try again.')
+      return null
+    } finally {
+      setSaving(false)
     }
   }
+
+  const toggleLesson = async () => {
+    if (!selectedLesson) return
+    if (!user) {
+      requireSignIn()
+      return
+    }
+
+    let currentEnrollment = enrollment
+    if (!currentEnrollment) {
+      currentEnrollment = await enroll()
+      if (!currentEnrollment) return
+    }
+
+    const completed = (currentEnrollment.completedLessons || []).includes(selectedLesson.id)
+    setSaving(true)
+    setActionError('')
+    setMessage('')
+    try {
+      const result = await apiFetch(`/api/me/enrollments/${course._id}/progress`, {
+        method: 'PUT',
+        body: JSON.stringify({ lessonId: selectedLesson.id, completed: !completed })
+      })
+      setEnrollment(result.enrollment)
+      setMessage(!completed ? 'Lesson marked complete.' : 'Lesson moved back to open.')
+    } catch {
+      setActionError('Progress could not be saved.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="container-studio py-16">
+        <div className="h-4 w-32 animate-pulse bg-clay" />
+        <div className="mt-6 h-16 w-3/5 animate-pulse bg-clay" />
+        <div className="mt-10 grid gap-8 lg:grid-cols-12">
+          <div className="h-96 animate-pulse border border-line bg-paper lg:col-span-7" />
+          <div className="h-72 animate-pulse border border-line bg-paper lg:col-span-4 lg:col-start-9" />
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !course) {
+    return (
+      <div className="container-studio py-16">
+        <p className="eyebrow">Course unavailable</p>
+        <h1 className="mt-4 font-display text-4xl font-semibold tracking-[-0.04em]">This route could not be opened.</h1>
+        <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">{error || 'The course was not found.'}</p>
+        <Link to="/courses" className="btn-primary mt-6">Back to the catalogue</Link>
+      </div>
+    )
+  }
+
+  const isCompleted = Boolean(
+    selectedLesson && (enrollment?.completedLessons || []).includes(selectedLesson.id)
+  )
 
   return (
-    <div className="pt-16 min-h-screen bg-gray-50">
-      {/* Course Hero Section */}
-      <div className="course-hero bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
-              <div className="mb-4">
-                <span className="text-coursera-lightblue text-sm font-medium">{displayCourse.university}</span>
-              </div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-4">{displayCourse.title}</h1>
-              <p className="text-xl text-gray-300 mb-6">{displayCourse.description}</p>
-              
-              <div className="flex flex-wrap items-center gap-6 mb-6">
-                <div className="flex items-center space-x-1">
-                  <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                  <span className="font-semibold">{displayCourse.rating}</span>
-                  <span className="text-gray-300">({displayCourse.reviewCount} reviews)</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Users className="w-5 h-5 text-gray-400" />
-                  <span>{displayCourse.students} students</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Clock className="w-5 h-5 text-gray-400" />
-                  <span>{displayCourse.duration}</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Globe className="w-5 h-5 text-gray-400" />
-                  <span>{displayCourse.language}</span>
-                </div>
-              </div>
+    <div className="bg-chalk">
+      <section className="container-studio pb-10 pt-8 lg:pb-14 lg:pt-12">
+        <Link to="/courses" className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-muted hover:text-ink">
+          <FaArrowLeft className="h-3 w-3" aria-hidden="true" />
+          All courses
+        </Link>
 
-              <div className="flex flex-wrap gap-2 mb-6">
-                {displayCourse.skills.slice(0, 4).map((skill, index) => (
-                  <span key={index} className="bg-white/10 text-white px-3 py-1 rounded-full text-sm">
-                    {skill}
+        <div className="mt-8 grid gap-10 lg:grid-cols-12 lg:gap-14">
+          <div className="lg:col-span-7">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="badge">{course.category}</span>
+              <span className="badge">{course.level}</span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted">
+                LearnHub Studio / {course.durationWeeks || 4} weeks
+              </span>
+            </div>
+            <h1 className="mt-5 max-w-[16ch] font-display text-[clamp(3rem,6vw,5.6rem)] font-semibold leading-[0.88] tracking-[-0.055em] text-ink">
+              {course.title}
+            </h1>
+            <p className="mt-6 max-w-2xl text-base leading-relaxed text-muted">{course.description}</p>
+
+            {course.outcomes?.length > 0 && (
+              <div className="mt-8 border-t border-line pt-6">
+                <p className="eyebrow">What you will be able to do</p>
+                <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {course.outcomes.map((outcome) => (
+                    <li key={outcome} className="flex gap-2 text-sm leading-relaxed text-ink">
+                      <FaCheck className="mt-0.5 h-3 w-3 shrink-0 text-cobalt" aria-hidden="true" />
+                      {outcome}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          <div className="lg:col-span-5">
+            <div className="border border-line bg-paper">
+              <div className="aspect-[4/3] overflow-hidden border-b border-line bg-clay">
+                <img src={course.imageUrl} alt="" className="h-full w-full object-cover" />
+              </div>
+              <div className="p-5">
+                <div className="flex items-baseline justify-between gap-4">
+                  <span className="font-display text-3xl font-semibold tracking-[-0.04em]">
+                    {formatPrice(course.priceCents, course.currency)}
                   </span>
-                ))}
-                {displayCourse.skills.length > 4 && (
-                  <span className="text-gray-300 text-sm">+{displayCourse.skills.length - 4} more</span>
+                  <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted">
+                    {progress.total} lessons
+                  </span>
+                </div>
+
+                {enrollment ? (
+                  <div className="mt-5">
+                    <div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-[0.12em] text-muted">
+                      <span>{progress.completed} of {progress.total} complete</span>
+                      <span className="tabular-nums text-ink">{progress.percent}%</span>
+                    </div>
+                    <div className="progress-track mt-2">
+                      <div className="progress-fill" style={{ width: `${progress.percent}%` }} />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => progress.nextLesson && selectLesson(progress.nextLesson.id)}
+                      disabled={!progress.nextLesson}
+                      className="btn-primary mt-5 w-full disabled:opacity-50"
+                    >
+                      {progress.nextLesson ? 'Continue the route' : 'Route complete'}
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => void enroll()}
+                      disabled={saving || authLoading}
+                      className="btn-primary mt-5 w-full disabled:opacity-50"
+                    >
+                      {user ? 'Enroll in this course' : 'Sign in to enroll'}
+                    </button>
+                    <p className="mt-3 text-center font-mono text-[9px] uppercase leading-relaxed tracking-[0.12em] text-muted">
+                      Demo enrollment · No payment is taken
+                    </p>
+                  </>
                 )}
               </div>
-
-              <div className="flex items-center space-x-4">
-                <button className="bg-coursera-blue hover:bg-coursera-darkblue text-white px-8 py-3 rounded-lg font-semibold transition-colors duration-200">
-                  {isEnrolled ? 'Continue Learning' : 'Enroll Now'}
-                </button>
-                <button className="border border-white/30 text-white hover:bg-white/10 px-6 py-3 rounded-lg font-semibold transition-colors duration-200 flex items-center space-x-2">
-                  <Play className="w-4 h-4" />
-                  <span>Preview</span>
-                </button>
-                <button className="p-3 border border-white/30 rounded-lg hover:bg-white/10 transition-colors duration-200">
-                  <Heart className="w-5 h-5" />
-                </button>
-                <button className="p-3 border border-white/30 rounded-lg hover:bg-white/10 transition-colors duration-200">
-                  <Share2 className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-xl p-6 shadow-lg">
-                <div className="relative mb-4">
-                  <img
-                    src={displayCourse.image}
-                    alt={displayCourse.title}
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
-                  <button className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg hover:bg-black/40 transition-colors duration-200">
-                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
-                      <Play className="w-6 h-6 text-coursera-blue ml-1" />
-                    </div>
-                  </button>
-                </div>
-                
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-3xl font-bold text-coursera-blue">{displayCourse.price}</span>
-                    {displayCourse.originalPrice && (
-                      <span className="text-lg text-gray-400 line-through">{displayCourse.originalPrice}</span>
-                    )}
-                  </div>
-                  {displayCourse.originalPrice && (
-                    <span className="bg-red-100 text-red-600 text-sm font-semibold px-2 py-1 rounded">
-                      Sale
-                    </span>
-                  )}
-                </div>
-
-                <div className="space-y-3 text-sm text-gray-600 mb-6">
-                  <div className="flex items-center justify-between">
-                    <span>Level:</span>
-                    <span className="font-medium text-gray-900">{displayCourse.level}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Duration:</span>
-                    <span className="font-medium text-gray-900">{displayCourse.duration}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Language:</span>
-                    <span className="font-medium text-gray-900">{displayCourse.language}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Certificate:</span>
-                    <span className="font-medium text-gray-900">Yes</span>
-                  </div>
-                </div>
-
-                <button 
-                  onClick={() => setIsEnrolled(!isEnrolled)}
-                  className="w-full bg-coursera-blue hover:bg-coursera-darkblue text-white py-3 rounded-lg font-semibold transition-colors duration-200 mb-3"
-                >
-                  {isEnrolled ? 'Continue Learning' : 'Enroll Now'}
-                </button>
-                
-                <button className="w-full border border-coursera-blue text-coursera-blue hover:bg-coursera-blue hover:text-white py-3 rounded-lg font-semibold transition-colors duration-200">
-                  Add to Wishlist
-                </button>
-              </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Course Content */}
-      <div className="course-content max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            {/* Tabs */}
-            <div className="border-b border-gray-200 mb-8">
-              <nav className="flex space-x-8">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
-                      activeTab === tab.id
-                        ? 'border-coursera-blue text-coursera-blue'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    {tab.name}
-                  </button>
-                ))}
-              </nav>
+      <section className="border-y border-line bg-paper py-12 lg:py-16" aria-labelledby="route-title">
+        <div className="container-studio">
+          <div className="flex flex-col justify-between gap-4 border-b border-line pb-5 sm:flex-row sm:items-end">
+            <div>
+              <p className="eyebrow">The route</p>
+              <h2 id="route-title" className="mt-2 font-display text-3xl font-semibold tracking-[-0.04em]">
+                {course.modules?.length || 0} modules. {progress.total} pieces of work.
+              </h2>
             </div>
+            <p className="max-w-xs font-mono text-[9px] uppercase leading-relaxed tracking-[0.12em] text-muted">
+              Select a lesson to read the objective and mark it complete.
+            </p>
+          </div>
 
-            {/* Tab Content */}
-            {activeTab === 'overview' && (
-              <div className="space-y-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">About this Course</h2>
-                  <p className="text-gray-700 leading-relaxed mb-6">{displayCourse.longDescription}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">What you'll learn</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {displayCourse.whatYouLearn.map((item, index) => (
-                      <div key={index} className="flex items-start space-x-3">
-                        <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-gray-700">{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">Skills you'll gain</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {displayCourse.skills.map((skill, index) => (
-                      <span key={index} className="bg-coursera-blue/10 text-coursera-blue px-3 py-2 rounded-lg text-sm font-medium">
-                        {skill}
+          {progress.total === 0 ? (
+            <div className="py-12">
+              <p className="font-display text-2xl text-ink">The syllabus is still being prepared.</p>
+              <p className="mt-2 text-sm text-muted">This course has no published lessons yet.</p>
+            </div>
+          ) : (
+            <div className="mt-6 grid gap-8 lg:grid-cols-12 lg:gap-10">
+              <div className="lg:col-span-7">
+                {(course.modules || []).map((module, moduleIndex) => {
+                  const moduleLessons = module.lessons || []
+                  return (
+                    <div key={module.title} className="grid gap-4 border-b border-line py-5 first:pt-0 last:border-b-0 sm:grid-cols-[2.5rem_1fr]">
+                      <span className="font-mono text-[10px] tracking-[0.14em] text-cobalt">
+                        {String(moduleIndex + 1).padStart(2, '0')}
                       </span>
-                    ))}
-                  </div>
-                </div>
+                      <div>
+                        <h3 className="font-display text-xl font-semibold tracking-[-0.03em]">{module.title}</h3>
+                        <p className="mt-1 text-sm leading-relaxed text-muted">{module.summary}</p>
 
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">Prerequisites</h3>
-                  <ul className="space-y-2">
-                    {displayCourse.prerequisites.map((prereq, index) => (
-                      <li key={index} className="flex items-start space-x-3">
-                        <ChevronRight className="w-4 h-4 text-gray-400 mt-1 flex-shrink-0" />
-                        <span className="text-gray-700">{prereq}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'syllabus' && (
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Course Syllabus</h2>
-                <div className="space-y-4">
-                  {displayCourse.syllabus.map((week) => (
-                    <div key={week.week} className="bg-white border border-gray-200 rounded-lg">
-                      <div className="p-6 border-b border-gray-200">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            Week {week.week}: {week.title}
-                          </h3>
-                          <span className="text-sm text-gray-500">{week.duration}</span>
-                        </div>
-                      </div>
-                      <div className="p-6">
-                        <div className="space-y-3">
-                          {week.lessons.map((lesson, index) => (
-                            <div key={index} className="flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors duration-200">
-                              <div className="text-gray-400">
-                                {getIconForLessonType(lesson.type)}
-                              </div>
-                              <div className="flex-1">
-                                <div className="font-medium text-gray-900">{lesson.title}</div>
-                              </div>
-                              <div className="text-sm text-gray-500">{lesson.duration}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'instructor' && (
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Meet your Instructor</h2>
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <div className="flex items-start space-x-6">
-                    <img
-                      src={displayCourse.instructorImage}
-                      alt={displayCourse.instructor}
-                      className="w-24 h-24 rounded-full object-cover"
-                    />
-                    <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">{displayCourse.instructor}</h3>
-                      <p className="text-gray-600 mb-4">{displayCourse.instructorTitle}</p>
-                      <p className="text-gray-700 leading-relaxed mb-4">
-                        Andrew Ng is a globally recognized leader in AI. He is the founder of DeepLearning.AI, 
-                        co-founder of Coursera, and an Adjunct Professor at Stanford University. He was formerly 
-                        Chief Scientist at Baidu and founding lead of Google Brain.
-                      </p>
-                      <div className="flex items-center space-x-6 text-sm text-gray-600">
-                        <div className="flex items-center space-x-1">
-                          <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                          <span>4.9 Instructor Rating</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Users className="w-4 h-4" />
-                          <span>5.2M Students</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <BookOpen className="w-4 h-4" />
-                          <span>12 Courses</span>
+                        <div className="mt-4 space-y-2">
+                          {moduleLessons.map((lesson) => {
+                            const meta = KIND_META[lesson.kind] || KIND_META.lesson
+                            const Icon = meta.icon
+                            const complete = (enrollment?.completedLessons || []).includes(lesson.id)
+                            const selected = selectedLesson?.id === lesson.id
+                            const lessonNumber = progress.lessons.findIndex((item) => item.id === lesson.id) + 1
+                            return (
+                              <button
+                                key={lesson.id}
+                                type="button"
+                                onClick={() => selectLesson(lesson.id)}
+                                aria-pressed={selected}
+                                className={`flex w-full items-center gap-3 border px-3 py-2.5 text-left transition-colors ${
+                                  selected
+                                    ? 'border-cobalt bg-cobalt/5'
+                                    : 'border-line bg-chalk/60 hover:border-cobalt/50'
+                                }`}
+                              >
+                                <span
+                                  className={`flex h-7 w-7 shrink-0 items-center justify-center border font-mono text-[9px] ${
+                                    complete
+                                      ? 'border-cobalt bg-cobalt text-white'
+                                      : selected
+                                        ? 'border-cobalt bg-acid text-ink'
+                                        : 'border-line text-muted'
+                                  }`}
+                                >
+                                  {complete ? <FaCheck className="h-3 w-3" aria-hidden="true" /> : String(lessonNumber).padStart(2, '0')}
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-sm text-ink">{lesson.title}</span>
+                                  <span className="mt-0.5 flex items-center gap-2 font-mono text-[8px] uppercase tracking-[0.1em] text-muted">
+                                    <Icon className="h-2.5 w-2.5" aria-hidden="true" />
+                                    {meta.label} · {lesson.minutes} min
+                                  </span>
+                                </span>
+                                <FaArrowRight className={`h-3 w-3 shrink-0 ${selected ? 'text-cobalt' : 'text-muted/50'}`} aria-hidden="true" />
+                              </button>
+                            )
+                          })}
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'reviews' && (
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Student Reviews</h2>
-                <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-                  <div className="flex items-center space-x-6 mb-6">
-                    <div className="text-center">
-                      <div className="text-4xl font-bold text-gray-900">{displayCourse.rating}</div>
-                      <div className="flex items-center justify-center space-x-1 mb-2">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
-                        ))}
-                      </div>
-                      <div className="text-sm text-gray-600">{displayCourse.reviewCount} reviews</div>
-                    </div>
-                    <div className="flex-1">
-                      {[5, 4, 3, 2, 1].map((stars) => (
-                        <div key={stars} className="flex items-center space-x-2 mb-1">
-                          <span className="text-sm text-gray-600 w-8">{stars}★</span>
-                          <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-yellow-400 h-2 rounded-full" 
-                              style={{ width: `${stars === 5 ? 85 : stars === 4 ? 12 : stars === 3 ? 2 : stars === 2 ? 1 : 0}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-sm text-gray-600 w-8">
-                            {stars === 5 ? '85%' : stars === 4 ? '12%' : stars === 3 ? '2%' : stars === 2 ? '1%' : '0%'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sample Reviews */}
-                <div className="space-y-6">
-                  {[
-                    {
-                      name: 'Sarah Johnson',
-                      rating: 5,
-                      date: '2 weeks ago',
-                      review: 'Excellent course! Andrew Ng explains complex concepts in a very clear and understandable way. The programming assignments are challenging but rewarding.'
-                    },
-                    {
-                      name: 'Michael Chen',
-                      rating: 5,
-                      date: '1 month ago',
-                      review: 'This course gave me a solid foundation in machine learning. The practical exercises helped me understand the theory better.'
-                    },
-                    {
-                      name: 'Emily Rodriguez',
-                      rating: 4,
-                      date: '2 months ago',
-                      review: 'Great content and well-structured. Some of the math can be challenging, but the explanations are thorough.'
-                    }
-                  ].map((review, index) => (
-                    <div key={index} className="bg-white border border-gray-200 rounded-lg p-6">
-                      <div className="flex items-start space-x-4">
-                        <div className="w-10 h-10 bg-coursera-blue rounded-full flex items-center justify-center text-white font-semibold">
-                          {review.name.charAt(0)}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <span className="font-semibold text-gray-900">{review.name}</span>
-                            <div className="flex items-center space-x-1">
-                              {[...Array(review.rating)].map((_, i) => (
-                                <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
-                              ))}
-                            </div>
-                            <span className="text-sm text-gray-500">{review.date}</span>
-                          </div>
-                          <p className="text-gray-700">{review.review}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-24 space-y-6">
-              {/* Certificate Info */}
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <div className="flex items-center space-x-3 mb-4">
-                  <Award className="w-6 h-6 text-coursera-blue" />
-                  <h3 className="text-lg font-semibold text-gray-900">Earn a Certificate</h3>
-                </div>
-                <p className="text-gray-600 text-sm mb-4">
-                  Get a shareable certificate when you complete this course
-                </p>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    <span>Shareable certificate</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    <span>Add to LinkedIn profile</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    <span>Add to resume or CV</span>
-                  </div>
-                </div>
+                  )
+                })}
               </div>
 
-              {/* Related Courses */}
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Related Courses</h3>
-                <div className="space-y-4">
-                  {[
-                    {
-                      title: 'Deep Learning Specialization',
-                      instructor: 'Andrew Ng',
-                      rating: 4.8,
-                      price: '$59'
-                    },
-                    {
-                      title: 'Python for Data Science',
-                      instructor: 'IBM',
-                      rating: 4.6,
-                      price: '$42'
-                    }
-                  ].map((relatedCourse, index) => (
-                    <div key={index} className="border border-gray-100 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
-                      <h4 className="font-medium text-gray-900 mb-1 text-sm">{relatedCourse.title}</h4>
-                      <p className="text-xs text-gray-600 mb-2">{relatedCourse.instructor}</p>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-1">
-                          <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                          <span className="text-xs text-gray-600">{relatedCourse.rating}</span>
-                        </div>
-                        <span className="text-sm font-semibold text-coursera-blue">{relatedCourse.price}</span>
-                      </div>
+              <aside className="lg:col-span-4 lg:col-start-9">
+                {selectedLesson && (
+                  <div className="sticky top-28 border border-line bg-ink p-6 text-chalk">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.12em] text-acid">
+                        <SelectedIcon className="h-3 w-3" aria-hidden="true" />
+                        {selectedMeta.label}
+                      </span>
+                      <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-chalk/40">
+                        {selectedLesson.minutes} min
+                      </span>
                     </div>
-                  ))}
-                </div>
-              </div>
+
+                    <p className="mt-5 font-mono text-[9px] uppercase tracking-[0.12em] text-chalk/40">
+                      Lesson {String(selectedIndex + 1).padStart(2, '0')} / {selectedLesson.moduleTitle}
+                    </p>
+                    <h3 className="mt-2 font-display text-3xl font-semibold leading-[1.02] tracking-[-0.04em]">
+                      {selectedLesson.title}
+                    </h3>
+                    <p className="mt-4 text-sm leading-relaxed text-chalk/65">{selectedLesson.objective}</p>
+
+                    <button
+                      type="button"
+                      onClick={() => void toggleLesson()}
+                      disabled={saving || authLoading}
+                      className={`mt-6 inline-flex min-h-11 w-full items-center justify-center border px-4 font-mono text-[9px] uppercase tracking-[0.12em] transition-colors disabled:opacity-50 ${
+                        isCompleted
+                          ? 'border-chalk/30 text-chalk/70 hover:border-chalk'
+                          : 'border-acid bg-acid text-ink hover:bg-chalk'
+                      }`}
+                    >
+                      {saving
+                        ? 'Saving…'
+                        : isCompleted
+                          ? 'Completed — mark open'
+                          : enrollment
+                            ? 'Mark this lesson complete'
+                            : 'Start the route'}
+                    </button>
+
+                    {message && <p className="mt-3 text-xs text-acid" role="status">{message}</p>}
+                    {actionError && <p className="mt-3 text-xs text-[#FFB4A8]" role="alert">{actionError}</p>}
+
+                    <div className="mt-5 flex items-center justify-between border-t border-chalk/15 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => selectedIndex > 0 && selectLesson(progress.lessons[selectedIndex - 1].id)}
+                        disabled={selectedIndex <= 0}
+                        className="font-mono text-[9px] uppercase tracking-[0.12em] text-chalk/50 hover:text-chalk disabled:opacity-30"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => selectedIndex < progress.lessons.length - 1 && selectLesson(progress.lessons[selectedIndex + 1].id)}
+                        disabled={selectedIndex >= progress.lessons.length - 1}
+                        className="inline-flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-acid hover:text-chalk disabled:opacity-30"
+                      >
+                        Next
+                        <FaArrowRight className="h-2.5 w-2.5" aria-hidden="true" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </aside>
             </div>
-          </div>
+          )}
         </div>
-      </div>
+      </section>
+
+      <section className="container-studio py-14 lg:py-20">
+        <div className="grid gap-10 border-b border-line pb-10 lg:grid-cols-12">
+          <div className="lg:col-span-5">
+            <p className="eyebrow">Course facts</p>
+            <h2 className="mt-3 font-display text-3xl font-semibold tracking-[-0.04em]">Built as a route, not a playlist.</h2>
+          </div>
+          <dl className="lg:col-span-6 lg:col-start-7">
+            {[
+              ['Level', course.level],
+              ['Category', course.category],
+              ['Duration', `${course.durationWeeks || 4} weeks`],
+              ['Work', `${progress.total} lessons, labs, critiques, and projects`],
+              ['Studio', 'LearnHub Studio']
+            ].map(([label, value]) => (
+              <div key={label} className="grid gap-1 border-b border-line py-4 sm:grid-cols-[7rem_1fr]">
+                <dt className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted">{label}</dt>
+                <dd className="text-sm text-ink">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
     </div>
   )
 }
-
-export default CourseDetail
