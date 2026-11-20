@@ -1,4 +1,6 @@
 import express from 'express'
+import cors from 'cors'
+import helmet from 'helmet'
 import authRoutes from './routes/auth.js'
 import coursesRoutes from './routes/courses.js'
 import adminRoutes from './routes/admin.js'
@@ -8,6 +10,9 @@ import webhookRoutes from './routes/webhooks.js'
 
 export function createApp() {
   const app = express()
+
+  app.use(helmet())
+  app.use(cors())
 
   app.get('/api/health', (req, res) => {
     res.json({ ok: true })

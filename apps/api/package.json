@@ -7,7 +7,7 @@
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "build": "node -c src/index.js",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand"
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --runInBand"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -21,6 +21,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "jest": "^29.7.0",
     "mongodb-memory-server": "^10.1.0",
     "nodemon": "^3.1.4",
