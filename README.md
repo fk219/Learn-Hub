@@ -4,6 +4,16 @@ A studio-style learning platform built around a **course route**: modules, lesso
 
 The visual system is documented in [`DESIGN.md`](DESIGN.md).
 
+## Live demo
+
+| Surface | URL |
+|---|---|
+| Learner app | https://learn-hub-amber.vercel.app |
+| Admin ledger | https://learn-hub-admin.vercel.app |
+| API health | https://learnhub-api-6maa.onrender.com/api/health |
+
+The learner and admin apps are Vercel static deployments backed by the Render API and MongoDB Atlas. Enrollment is a demo action; no payment is taken.
+
 ## The idea
 
 Most course platforms present an endless content feed. LearnHub presents a route:
