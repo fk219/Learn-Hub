@@ -29,6 +29,19 @@ export default function SignIn() {
     }
   }
 
+  const handleDemo = async () => {
+    setError('')
+    setLoading(true)
+    try {
+      await login('demo@learnhub.example', 'LearnHubDemo123!')
+      navigate('/my-courses', { replace: true })
+    } catch (err) {
+      setError(err.message || 'Demo learner unavailable.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <AuthFrame
       eyebrow="Learner sign in"
@@ -84,6 +97,14 @@ export default function SignIn() {
           <div className="flex flex-wrap gap-x-2"><dt className="text-muted">Email</dt><dd>demo@learnhub.example</dd></div>
           <div className="flex flex-wrap gap-x-2"><dt className="text-muted">Password</dt><dd>LearnHubDemo123!</dd></div>
         </dl>
+        <button
+          type="button"
+          onClick={handleDemo}
+          disabled={loading}
+          className="mt-4 inline-flex min-h-11 w-full items-center justify-center border border-ink px-4 font-mono text-[10px] uppercase tracking-[0.14em] text-ink transition-colors hover:bg-ink hover:text-chalk disabled:opacity-50"
+        >
+          {loading ? 'Opening the route…' : 'Enter as demo learner'}
+        </button>
         <p className="mt-3 text-[11px] leading-relaxed text-muted">Seeded progress only. Do not enter personal information.</p>
       </div>
     </AuthFrame>

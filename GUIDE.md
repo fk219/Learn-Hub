@@ -18,14 +18,14 @@ LearnHub is a studio-style learning platform built around a route: modules, less
 6. Choose a lesson, read its objective, and mark it complete.
 7. Open **My learning** to see every started route, the next lesson, and overall progress.
 
-Sign in with the seeded demo learner if you want progress already in place:
+Use the **Enter as demo learner** button on the sign-in page, or sign in with the seeded account. Progress is already in place:
 
 - **Email:** `demo@learnhub.example`
 - **Password:** `LearnHubDemo123!`
 
 ## Admin flow
 
-Sign in with:
+Use the **Enter demo ledger** button on the admin sign-in page, or:
 
 - **Email:** `admin@learnhub.example`
 - **Password:** `LearnHub123!`

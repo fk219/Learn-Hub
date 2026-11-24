@@ -7,14 +7,13 @@ export default function Login({ onSuccess }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async (event) => {
-    event.preventDefault()
+  const signIn = async (emailValue, passwordValue) => {
     setError('')
     setLoading(true)
     try {
       const data = await apiFetch('/api/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email: emailValue, password: passwordValue })
       })
       if (data.user?.role !== 'admin') {
         setError('This account does not have admin access.')
@@ -29,6 +28,13 @@ export default function Login({ onSuccess }) {
       setLoading(false)
     }
   }
+
+  const handleSubmit = (event) => {
+    event.preventDefault()
+    signIn(email, password)
+  }
+
+  const handleDemo = () => signIn('admin@learnhub.example', 'LearnHub123!')
 
   return (
     <div className="flex min-h-screen flex-col bg-chalk">
@@ -125,6 +131,14 @@ export default function Login({ onSuccess }) {
               <div className="flex gap-2"><dt className="text-muted">Email</dt><dd>admin@learnhub.example</dd></div>
               <div className="flex gap-2"><dt className="text-muted">Password</dt><dd>LearnHub123!</dd></div>
             </dl>
+            <button
+              type="button"
+              onClick={handleDemo}
+              disabled={loading}
+              className="mt-4 inline-flex min-h-11 w-full items-center justify-center border border-ink px-4 font-mono text-[10px] uppercase tracking-[0.14em] text-ink transition-colors hover:bg-ink hover:text-chalk disabled:opacity-50"
+            >
+              {loading ? 'Opening the ledger…' : 'Enter demo ledger'}
+            </button>
           </div>
         </section>
       </main>
