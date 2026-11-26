@@ -12,7 +12,16 @@ export function createApp() {
   const app = express()
 
   app.use(helmet())
-  app.use(cors())
+
+  const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:3001,https://learnhub.furqankhan.dev,https://learnhub-admin.furqankhan.dev')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+
+  app.use(cors({
+    origin: allowedOrigins,
+    credentials: true,
+  }))
 
   app.get('/api/health', (req, res) => {
     res.json({ ok: true })

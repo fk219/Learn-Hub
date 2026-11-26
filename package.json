@@ -10,6 +10,9 @@
   "workspaces": [
     "apps/*"
   ],
+  "overrides": {
+    "proxy-addr": "^2.0.8"
+  },
   "devDependencies": {
     "concurrently": "^9.0.0"
   }

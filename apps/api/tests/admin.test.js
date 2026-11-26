@@ -8,7 +8,7 @@ describe('admin', () => {
     process.env.ADMIN_EMAIL = 'admin@example.com'
     process.env.ADMIN_PASSWORD = 'ChangeMe123!'
     await connectTestDb()
-  })
+  }, 120000)
 
   beforeEach(async () => {
     await clearTestDb()

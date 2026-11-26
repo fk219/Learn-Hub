@@ -11,7 +11,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: NODE_VERSION
-        value: "20"
+        value: "22"
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET
@@ -36,7 +36,7 @@ services:
     staticPublishPath: apps/web/dist
     envVars:
       - key: NODE_VERSION
-        value: "20"
+        value: "22"
       - key: VITE_API_URL
         value: https://learnhub-api.onrender.com
     routes:
@@ -51,7 +51,7 @@ services:
     staticPublishPath: apps/admin/dist
     envVars:
       - key: NODE_VERSION
-        value: "20"
+        value: "22"
       - key: VITE_API_URL
         value: https://learnhub-api.onrender.com
       - key: VITE_WEB_URL

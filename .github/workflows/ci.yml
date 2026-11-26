@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  ci:
+    name: Test and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run API tests
+        run: npm test
+        env:
+          JWT_SECRET: ci-test-secret-32-characters-minimum
+          ADMIN_EMAIL: admin@learnhub.example
+          ADMIN_PASSWORD: LearnHub123!
+          DEMO_EMAIL: demo@learnhub.example
+          DEMO_PASSWORD: LearnHubDemo123!
+          STRIPE_MOCK: "1"
+
+      - name: Build API, learner app and admin
+        run: npm run build

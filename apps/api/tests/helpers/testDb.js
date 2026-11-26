@@ -1,6 +1,8 @@
 import mongoose from 'mongoose'
 import { MongoMemoryServer } from 'mongodb-memory-server'
 
+process.env.MONGOMS_STARTUP_TIMEOUT = '120000'
+
 let mongo
 
 export async function connectTestDb() {

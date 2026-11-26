@@ -354,3 +354,22 @@ textarea {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------------------------------------------------------------- */
+/* Theme switch: night studio                                       */
+/* ---------------------------------------------------------------- */
+html[data-theme="dark"] {
+  --chalk: #0e1114;
+  --paper: #14181d;
+  --ink: #f0f2f4;
+  --cobalt: #8ea6ff;
+  --acid: #c6f24e;
+  --clay: #1e242a;
+  --muted: rgba(240, 242, 244, 0.66);
+  --line: rgba(240, 242, 244, 0.16);
+  color-scheme: dark;
+}
+
+html[data-theme="dark"] ::selection {
+  background: rgba(198, 242, 78, 0.28);
+}
